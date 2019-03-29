@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+
+chmod 600 key.pem
+ssh ubuntu@143.248.140.157 -i key.pem -p 0$122
+
