@@ -75,7 +75,7 @@ get_ipython().system(u'wget -O sample7.exr https://www.dropbox.com/s/7b06a2i4pvo
 get_ipython().system(u'wget -O sample8.exr https://www.dropbox.com/s/dgt3upcr9z089e4/10848082-00256spp.exr?dl=1')
 get_ipython().system(u'wget -O sample9.exr https://www.dropbox.com/s/mooki46xmua6u21/11109097-00256spp.exr?dl=1')
 get_ipython().system(u'wget -O sample10.exr https://www.dropbox.com/s/rlevs70jq3dh8kq/35930976-00256spp.exr?dl=1')
-  
+
 get_ipython().system(u'wget -O gt.exr https://www.dropbox.com/s/szhfit37cyhfk13/10064185-08192spp.exr?dl=1')
 get_ipython().system(u'wget -O gt2.exr https://www.dropbox.com/s/o6n90rf9wal5v59/10430937-08192spp.exr?dl=1')
 get_ipython().system(u'wget -O gt3.exr https://www.dropbox.com/s/amevblnfjk69k8p/10095699-08192spp.exr?dl=1')
