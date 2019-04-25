@@ -1,3 +1,3 @@
 # CS580-project
-Init 
-MinKi Jo!
+
+Project Repository for CS580.
