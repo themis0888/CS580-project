@@ -32,9 +32,8 @@ class ExternalDataLoader:
     def get_batch(idx, spp=128):
         pass
 
-    # def get_total
-
-    # ssh root@143.248.38.66 -p 3202 # 1234
+    def get_total(spp=128):
+        pass
         
 
 if __name__ == "__main__":
