@@ -15,9 +15,9 @@ $ source env/bin/activate
 ```
 First make sure `pip` is up-to-date by upgrading it
 ```
-$ pip install --upgrade pip
+$ pip3 install --upgrade pip
 ```
 Then install all requierements requiered for this project
 ```
-$ pip install -r requierements.txt
+$ pip3 install -r requierements.txt
 ```
