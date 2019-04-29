@@ -48,7 +48,7 @@ class ExternalDataLoader:
     
     @property
     def files_amount(self):
-        return self.total_files / len(self.possible_spp)
+        return int(self.total_files / len(self.possible_spp))
         
     def get_data(self, idx, spp=128):
         """
@@ -57,6 +57,9 @@ class ExternalDataLoader:
         # Calculate scene
         if spp not in self.possible_spp:
             raise FileNotFoundError("There is no file for this spp.")
+
+        if idx >= self.files_amount:
+            raise IndexError("Index too big")
 
         total = 0
         scene_name = None
@@ -74,37 +77,57 @@ class ExternalDataLoader:
         sub_idx = idx - total
         file_name = all_file_spp[sub_idx]
         
-        file_path = os.path.join(scene_name, file_name)
-        self.sftp_client.get(file_path, "image.exr")
-        file = pyexr.open("image.exr")
+        file_path_x = os.path.join(scene_name, file_name)
+        file_x = self.get_file(file_path_x)
 
-        return file
+        file_id, _ = file_name.split("-")
+        file_name_y = file_id + "08192.exr"
+        file_path_y = os.path.join(scene_name, file_name)
+        file_y = self.get_file(file_path_y)
+
+        
+        return file_x, file_y
         
 
     def get_batch(self, idx, spp=128):
         X = []
         Y = []
-        for pos in range(self.batch_size):
-            x = self.get_data(idx * self.batch_size + pos, spp=spp)
-            y = self.get_data(idx * self.batch_size + pos, spp=8192)
+
+        if idx == self.batches_amount - 1:
+            this_batch_size = self.files_amount % self.batch_size
+        else:
+            this_batch_size = self.batch_size
+
+        for pos in range(this_batch_size):
+            x, y = self.get_data(idx * self.batch_size + pos, spp=spp)
             X.append(x)
             Y.append(y)
         return X, Y
 
+    def get_file(self, file_path):
+        self.sftp_client.get(file_path, "image.exr")
+        file = pyexr.open("image.exr")
+        os.remove("image.exr")
+        return file
+
+
 if __name__ == "__main__":
     password = getpass.getpass("Password: ")
-    external_data_loader = ExternalDataLoader(password)
+    external_data_loader = ExternalDataLoader(password, batch_size=4)
+    print("Images per spp: {}".format(external_data_loader.files_amount))
+    print("Batches per spp: {}".format(external_data_loader.batches_amount))
 
     print("----- Downloading Example File -----")
-    file = external_data_loader.get_data(0)
-    print("Width:", file.width)
-    print("Height:", file.height)
+    x, y = external_data_loader.get_data(0)
+    print("Width:", x.width)
+    print("Height:", x.height)
     print("Available channels:")
-    file.describe_channels()
-    print("Default channels:", file.channel_map['default'])
+    x.describe_channels()
+    print("Default channels:", x.channel_map['default'])
     print("--------------- Done ---------------")
 
     # Takes a long time
-    print("---- Loading a Batch of Size 64 ----")
-    batch = external_data_loader.get_batch(0)
+    print("---- Loading the last batch ----")
+    batch = external_data_loader.get_batch(external_data_loader.batches_amount - 1)
+    print(len(batch[0]))
     print("------ Loaded Unique Values --------")
