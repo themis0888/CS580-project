@@ -11,7 +11,6 @@ from scipy import ndimage
 import random
 from random import randint
 import glob, os
-from options import args
 from tqdm import tqdm
 import time
 
@@ -65,8 +64,6 @@ class KPCNDataset(torch.utils.data.Dataset):
             # cropped += get_cropped_patches(sample_name, gt_name)
         
         print('Start pre-processing \n')
-
-        self.names = self.names[:50]
         
         # save the processed data and the prob.map into the ptfiles, If you don't have it.
         for sample_file, gt_file in tqdm(self.names):
@@ -76,26 +73,31 @@ class KPCNDataset(torch.utils.data.Dataset):
             
             No_pt, No_prob = not os.path.exists(pt_file_name), not os.path.exists(prob_file_name)
 
-            if No_pt or No_prob: 
+            if No_prob: 
+                """
                 if No_pt: 
                     data = preprocess_input(sample_file, gt_file)
                     torch.save(data, pt_file_name)
                 else: data = torch.load(pt_file_name)
-            
+                """
+                data = preprocess_input(sample_file, gt_file)
                 if No_prob: self.preprocess_importanceMap(data, prob_file_name)
             
             self.data_names.append((pt_file_name, prob_file_name))
         
         print('Pre-processing Done! \n')
-        random.shuffle(self.data_names)
+        random.shuffle(self.names)
 
     def __len__(self):
         return len(self.names)
 
     def __getitem__(self, idx):
         # pdb.set_trace()
-        pt_file_name, prob_file_name = self.data_names[idx]
-        data = torch.load(pt_file_name)
+        # pt_file_name, prob_file_name = self.data_names[idx]
+        # data = torch.load(pt_file_name)
+        sample_file, gt_file = self.names[idx]
+        prob_file_name = self.cvt_prob_file_name(data_filename = gt_file)
+        data = preprocess_input(sample_file, gt_file)
         sh, sw = self.Single_importanceSampling(prob_file_name)
         dh, dw, dc = data[list(data.keys())[0]].shape
         sh, sw = self.fix_position(sh, sw, dh, dw, patch_size)

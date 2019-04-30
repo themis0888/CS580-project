@@ -15,8 +15,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy import ndimage
 
-import random, time
+import random, time, os
 from random import randint
+from tqdm import tqdm
 import pdb
 
 
@@ -33,10 +34,15 @@ class Trainer():
         self.recon_kernel_size = self.args.recon_kernel_size
         self.eps = self.args.eps
         self.global_step = 0
+        self.model_dir = os.path.join('model', self.args.model)
+        self.print_freq = self.args.print_freq
+        self.writer = writer 
+
+        if not os.path.exists(self.model_dir): os.makedirs(self.model_dir)
         
 
 
-    def train(self, epochs=5, learning_rate=1e-4, show_images=False):
+    def train(self, epochs=200, learning_rate=1e-4, show_images=False):
         
         dataloader = self.loader
 
@@ -45,8 +51,8 @@ class Trainer():
 
         # diffuseNet = make_net(self.args, self.args.n_resblocks, self.model).to(self.device)
         # specularNet = make_net(self.args, self.args.n_resblocks, self.model).to(self.device)
-        diffuseNet = Net(self.args)
-        specularNet = Net(self.args)
+        diffuseNet = Net(self.args).to(self.device)
+        specularNet = Net(self.args).to(self.device)
 
 
         print(diffuseNet, "CUDA:", next(diffuseNet.parameters()).is_cuda)
@@ -57,9 +63,15 @@ class Trainer():
         optimizerDiff = optim.Adam(diffuseNet.parameters(), lr=learning_rate)
         optimizerSpec = optim.Adam(specularNet.parameters(), lr=learning_rate)
 
+        if self.args.resume:
+            diffuseNet.load_state_dict(torch.load(os.path.join(self.model_dir, 'diffuseNet.pt')))
+            specularNet.load_state_dict(torch.load(os.path.join(self.model_dir, 'specularNet.pt')))
+
         accuLossDiff = 0
         accuLossSpec = 0
         accuLossFinal = 0
+        writer_LossDiff = 0
+        writer_LossSpec = 0
         
         lDiff = []
         lSpec = []
@@ -71,12 +83,11 @@ class Trainer():
         # pdb.set_trace()
         loader_start = time.time()
         for epoch in range(epochs):
-            for i_batch, sample_batched in enumerate(dataloader):
+            print('Epoch {:04d}'.format(epoch))
+            for i_batch, sample_batched in enumerate(tqdm(dataloader, ncols = 80)):
+                self.global_step += 1
                 loader_end = time.time()
-                print(loader_end - loader_start)
-                # pdb.set_trace()
-                #print(i_batch)
-
+                
                 # get the inputs
                 X_diff = sample_batched['X_diff'].permute(permutation).to(self.device)
                 Y_diff = sample_batched['Reference'][:,:,:,:3].permute(permutation).to(self.device)
@@ -138,22 +149,33 @@ class Trainer():
                         # show_data(gt, figsize=(sz,sz), normalize=True)
 
                     Y_final = sample_batched['finalGt'].permute(permutation).to(self.device)
-
                     Y_final = self.crop_like(Y_final, outputFinal)
-
                     lossFinal = criterion(outputFinal, Y_final)
-
                     accuLossFinal += lossFinal.item()
 
-                accuLossDiff += lossDiff.item()
-                accuLossSpec += lossSpec.item()
+                iter_lossDiff, iter_lossSpec = lossDiff.item(), lossSpec.item()
+                accuLossDiff += iter_lossDiff
+                accuLossSpec += iter_lossSpec
+                writer_LossDiff += iter_lossDiff
+                writer_LossSpec += iter_lossSpec
                 loader_start = time.time()
+
+                if self.global_step-1 % self.print_freq ==0:
+                    self.writer.add_scalars('data/LossDiff', {self.model: writer_LossDiff/self.print_freq}, self.global_step)
+                    self.writer.add_scalars('data/LossSpec', {self.model: writer_LossSpec/self.print_freq}, self.global_step)
+                    writer_LossDiff, writer_LossSpec = 0, 0
+                    
+                if self.global_step % self.args.save_freq == 0:
+                    torch.save(diffuseNet.state_dict(), os.path.join(self.model_dir, 'diffuseNet.pt'))
+                    torch.save(specularNet.state_dict(), os.path.join(self.model_dir, 'specularNet.pt'))
             
 
             print("Epoch {}".format(epoch + 1))
             print("LossDiff: {}".format(accuLossDiff))
             print("LossSpec: {}".format(accuLossSpec))
             print("LossFinal: {}".format(accuLossFinal))
+
+
 
             lDiff.append(accuLossDiff)
             lSpec.append(accuLossSpec)

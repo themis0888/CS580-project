@@ -5,7 +5,6 @@ from option import args
 from trainer import Trainer
 from tensorboardX import SummaryWriter
 
-
 torch.manual_seed(args.seed)
 import pdb
 
@@ -13,7 +12,7 @@ import pdb
 def main():
     global model
     writer = SummaryWriter()
-    args.device = torch.device("cuda:3" if torch.cuda.is_available() else "cpu")
+    args.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     dataset = data.KPCNDataset(args)
     loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.n_threads)
     model = 'KPCN' # model.Model(args, checkpoint)
