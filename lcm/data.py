@@ -13,64 +13,85 @@ from random import randint
 import glob
 
 import pdb
+import time
+import pickle
+import os
 
 
 figure_num = 0
 patch_size = 64 # patches are 64x64
 n_patches = 400
 eps = 0.00316
+
 # set device to GPU if available
 # print(torch.cuda.current_device())
 # device = torch.device("cuda:3" if torch.cuda.is_available() else "cpu")
 # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 device = torch.device("cpu")
-# print(device)
+
+# delete preprocessed and importance map file after running
+# for time checking and other reasons
+file_delete = True
+
 ############################
 ### Make a dataset class ###
 ############################
 
 # cropped = to_torch_tensors(cropped)
 # cropped = send_to_device(cropped)
-
 # It contains None data for some index because of pruning data by importance sampling
 class KPCNDataset(torch.utils.data.Dataset):
     def __init__(self):
         self.names = []
-        self.data = []
-        self.sampling = []
-        
-        # self.samples = cropped
-        for f in glob.glob('samples/*-00*spp.exr'):
-            if f == 'sample.exr': continue
-            # num = f[len('sample'):f.index('.')]
-            num = f[len('samples/'):f.index('-')]
-            # sample_name = 'sample{}.exr'.format(num)
-            # gt_name = 'gt{}.exr'.format(num)
-            sample_name = 'samples/{}-00128spp.exr'.format(num)
-            gt_name = 'samples/{}-08192spp.exr'.format(num)
-            print(sample_name, gt_name)
+        if not os.path.isdir("samples/imp"):
+            os.mkdir("samples/imp")
+        if not os.path.isdir("samples/proc"):
+            os.mkdir("samples/proc")
+        # get all name of data
+        for sample_name in glob.glob('samples/raw/*-00128spp.exr'):
+            num = sample_name[len('samples/raw/'):sample_name.index('-')]
+            gt_name = 'samples/raw/{}-08192spp.exr'.format(num)
             self.names.append((sample_name, gt_name))
-            # cropped += get_cropped_patches(sample_name, gt_name)
+        save_files = glob.glob('samples/proc/*.pickle')
+        print("files:", len(self.names))
         for sample_file, gt_file in self.names:
+            num = sample_file[len('samples/raw/'):sample_file.index('-')]
+
+            if 'samples/proc/{}.pickle'.format(num) in save_files:
+                continue
+
+            prev_time = time.time()
             data = preprocess_input(sample_file, gt_file)
-            self.data.append(data)
-            self.sampling.append(self._importanceSampling(data, debug=True))
+            print("preprocess : " + str(time.time() - prev_time))
+
+            prev_time = time.time()
+            imp = self._importanceSampling(data)
+            print("sampling : " + str(time.time() - prev_time))
+
+            prev_time = time.time()
+            with open('samples/proc/{}.pickle'.format(num), 'wb') as f:
+                pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)
+            np.save('samples/imp/{}.npy'.format(num), imp)
+            print("save time : " + str(time.time() - prev_time))
 
     def __len__(self):
         return len(self.names) * n_patches
 
-    # def get_cropped_patches(sample_file, gt_file):
-    #     data = preprocess_input(sample_file, gt_file)
-    #     patches = importanceSampling(data)
-    #     cropped = list(crop(data, tuple(pos), patch_size) for pos in patches)
-                
-    #     return cropped
-
     def __getitem__(self, idx):
+        global cnt
         # coordinates of chosen patches
         a = randint(0, len(self.names)-1)
-        data = self.data[a]
-        patch = self.sampling[a][randint(0, len(self.sampling[a])-1)]
+
+        sample_file, gt_file = self.names[a]
+        num = sample_file[len('samples/raw/'):sample_file.index('-')]
+
+        prev_time = time.time()
+        with open('samples/proc/{}.pickle'.format(num), 'rb') as f:
+            data = pickle.load(f)
+        imp = np.load('samples/imp/{}.npy'.format(num))
+        print("load time : " + str(time.time() - prev_time))
+
+        patch = imp[randint(0, len(imp)-1)]
         # return to_torch_tensors(self._crop(data, tuple(patch), patch_size))
         return send_to_device(to_torch_tensors(self._crop(data, tuple(patch), patch_size)))
     
@@ -280,25 +301,6 @@ class KPCNDataset(torch.utils.data.Dataset):
                 
         return (pruned + pad)
 
-
-# print("Sampling of chosen patches:")
-# for i in range(5):
-# 	data_ = np.clip(cropped[np.random.randint(0, len(cropped))]['default'], 0, 1)**0.45454545
-# 	plt.figure(figsize = (5,5))
-# 	imgplot = plt.imshow(data_)
-# 	imgplot.axes.get_xaxis().set_visible(False)
-# 	imgplot.axes.get_yaxis().set_visible(False)
-# 	plt.show()
-
-
-
-# def get_cropped_patches(sample_file, gt_file):
-#     data = preprocess_input(sample_file, gt_file)
-#     patches = importanceSampling(data)
-#     cropped = list(crop(data, tuple(pos), patch_size) for pos in patches)
-	
-#     return cropped
-
 #################
 ### show data ###
 #################
@@ -359,9 +361,9 @@ def show_channel(img, chan):
 
     show_data(data)
 
-######################################
-## preprocess and post process data ##
-######################################
+#######################################
+## pre-process and post-process data ##
+#######################################
 
 def build_data(img):
     data = img.get()
@@ -509,9 +511,6 @@ def preprocess_input(filename, gt, debug=False):
     
     assert not np.isnan(X_diff).any()
     assert not np.isnan(X_spec).any()
-
-    print("X_diff shape:", X_diff.shape)
-    print(X_diff.dtype, X_spec.dtype)
     
     data['X_diff'] = X_diff
     data['X_spec'] = X_spec
@@ -525,15 +524,9 @@ def preprocess_input(filename, gt, debug=False):
     
     return data
 
-
-
-data = preprocess_input("samples/sample.exr", "samples/gt.exr", debug=True)
-
-for k, v in data.items():
-    print(k, "has nans:", np.isnan(v).any())
-    
-print("Let's check finalGt: ")
-show_data(np.clip(data['finalGt'], 0, 1)**0.45454545)
+##########
+## type ##
+##########
 
 def to_torch_tensors(data):
     if isinstance(data, dict):
@@ -557,94 +550,22 @@ def send_to_device(data):
             if isinstance(v, torch.Tensor):
                 data[i] = v.to(device)        
     return data
-    
-    
-# print(len(cropped))
-# print(type(cropped[0]))
 
+###############
+## test code ##
+###############
 
-
-# save the training data
-#torch.save(data, 'train.pt')
-#torch.save(cropped, 'patches.pt')
-
-# for i, v in enumerate(cropped):
-#     torch.save(v, 'sample'+str(i+1)+'.pt')
-
-# https://stackoverflow.com/questions/13530762/how-to-know-bytes-size-of-python-object-like-arrays-and-dictionaries-the-simp/53705610#53705610
-
-# import gc
-# import sys
-
-# def getsize(obj):
-#     marked = {id(obj)}
-#     obj_q = [obj]
-#     sz = 0
-
-#     while obj_q:
-#         sz += sum(map(sys.getsizeof, obj_q))
-
-#         # Lookup all the object reffered to by the object in obj_q.
-#         # See: https://docs.python.org/3.7/library/gc.html#gc.get_referents
-#         all_refr = ((id(o), o) for o in gc.get_referents(*obj_q))
-
-#         # Filter object that are already marked.
-#         # Using dict notation will prevent repeated objects.
-#         new_refr = {o_id: o for o_id, o in all_refr if o_id not in marked and not isinstance(o, type)}
-
-#         # The new obj_q will be the ones that were not marked,
-#         # and we will update marked with their ids so we will
-#         # not traverse them again.
-#         obj_q = new_refr.values()
-#         marked.update(new_refr.keys())
-
-#     return sz
-    
-
-# for k, v in cropped[0].items():
-#     print(k, getsize(v))
-    
-# print(getsize(cropped) / 1024 / 1024, "MiB")
-
-
-# Make a dataset class.
-
-# class KPCNDataset(torch.utils.data.Dataset):
-#     def __init__(self):
-#         self.samples = cropped
-
-#     def __len__(self):
-#         return len(self.samples)
-
-#     def __getitem__(self, idx):
-#         return self.samples[idx]
-
-
-# cropped = to_torch_tensors(cropped)
-# cropped = send_to_device(cropped)
-
-
-# Let's give it a try.
-
-
-dataset = KPCNDataset()
-
-# print("Left: noisy,    Right: reference")
-
-# cnt = 0
-# for i in range(len(dataset)):
-#     sample = dataset[np.random.randint(0, len(dataset))]
-#     data_sample = np.clip(sample['default'], 0, 1)**0.45454545
-#     data_ref = np.clip(sample['finalGt'], 0, 1)**0.45454545
-#     show_data_sbs(data_sample, data_ref, figsize=(4, 2))
-    
-    
-#     if i == 6:
-#         break
-
-dataloader = torch.utils.data.DataLoader(dataset, batch_size=4,
-                                    shuffle=True, num_workers=4)
-
-for i_batch, sample_batched in enumerate(dataloader):
-    pass
-    pdb.set_trace()
+if __name__ == "__main__":
+    dataset = KPCNDataset()
+    dataloader = torch.utils.data.DataLoader(dataset, batch_size=4,
+                                shuffle=True, num_workers=4)
+    for i_batch, sample_batched in enumerate(dataloader):
+        if i_batch == 0:
+            break
+    if file_delete:
+        for file in os.listdir("samples/imp"):
+            os.remove("samples/imp/"+file)
+        os.rmdir("samples/imp")
+        for file in os.listdir("samples/proc"):
+            os.remove("samples/proc/"+file)
+        os.rmdir("samples/proc")
