@@ -31,7 +31,7 @@ device = torch.device("cpu")
 
 # delete preprocessed and importance map file after running
 # for time checking and other reasons
-file_delete = True
+file_delete = False
 
 ############################
 ### Make a dataset class ###
@@ -61,11 +61,12 @@ class KPCNDataset(torch.utils.data.Dataset):
                 continue
 
             prev_time = time.time()
-            data = preprocess_input(sample_file, gt_file)
+            data = preprocess_input(sample_file, gt_file, debug=False)
+            # pdb.set_trace()
             print("preprocess : " + str(time.time() - prev_time))
 
             prev_time = time.time()
-            imp = self._importanceSampling(data)
+            imp = self._importanceSampling(data, debug=False)
             print("sampling : " + str(time.time() - prev_time))
 
             prev_time = time.time()
@@ -88,7 +89,9 @@ class KPCNDataset(torch.utils.data.Dataset):
         prev_time = time.time()
         with open('samples/proc/{}.pickle'.format(num), 'rb') as f:
             data = pickle.load(f)
+            assert(type(data) == type(dict()))
         imp = np.load('samples/imp/{}.npy'.format(num))
+        
         print("load time : " + str(time.time() - prev_time))
 
         patch = imp[randint(0, len(imp)-1)]
@@ -559,13 +562,32 @@ if __name__ == "__main__":
     dataset = KPCNDataset()
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=4,
                                 shuffle=True, num_workers=4)
+
     for i_batch, sample_batched in enumerate(dataloader):
-        if i_batch == 0:
+        # pdb.set_trace()
+        if i_batch == 2:
             break
+            
+        data_ = np.clip(sample_batched['default'][0], 0, 1)**0.45454545
+
+        # show each patches
+        for adsf in range(4):
+            tmp = sample_batched['default'][adsf]
+            np_data = tmp.cpu().numpy()
+            data_ = np.clip(np_data, 0, 1)**0.45454545
+            fig = plt.figure(figsize = (5,5))
+            imgplot = plt.imshow(data_)
+            imgplot.axes.get_xaxis().set_visible(False)
+            imgplot.axes.get_yaxis().set_visible(False)
+            fig.savefig('figure/{}_patch.png'.format(figure_num))
+            figure_num += 1
+            plt.close(fig)
+
+    # clear file
     if file_delete:
         for file in os.listdir("samples/imp"):
             os.remove("samples/imp/"+file)
-        os.rmdir("samples/imp")
+        # os.rmdir("samples/imp")
         for file in os.listdir("samples/proc"):
             os.remove("samples/proc/"+file)
-        os.rmdir("samples/proc")
+        # os.rmdir("samples/proc")
