@@ -3,11 +3,12 @@ import paramiko
 import time
 import pyexr
 
+password = getpass.getpass("Password: ")
 prev_time = time.time()
 ssh = paramiko.SSHClient()
 ssh.load_system_host_keys()
 ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-ssh.connect('125.138.77.26', port=8385, username="tlcm", password="chuls3742")
+ssh.connect('125.138.77.26', port=8385, username="tlcm", password=password)
 print("ssh connected")
 
 sftp = ssh.open_sftp()
