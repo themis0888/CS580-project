@@ -562,7 +562,7 @@ if __name__ == "__main__":
     dataset = KPCNDataset()
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=4,
                                 shuffle=True, num_workers=4)
-
+    prev_time = time.time()
     for i_batch, sample_batched in enumerate(dataloader):
         # pdb.set_trace()
         if i_batch == 2:
@@ -582,6 +582,8 @@ if __name__ == "__main__":
             fig.savefig('figure/{}_patch.png'.format(figure_num))
             figure_num += 1
             plt.close(fig)
+    
+    print(time.time() - prev_time)
 
     # clear file
     if file_delete:
