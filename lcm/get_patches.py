@@ -16,6 +16,7 @@ import pdb
 import time
 import pickle
 import os
+from tqdm import tqdm
 
 
 figure_num = 0
@@ -31,7 +32,7 @@ def crop(data, pos, patch_size):
     half_patch = patch_size // 2
     sx, sy = half_patch, half_patch
     px, py = pos
-    return {key: val[(py-sy):(py+sy+1),(px-sx):(px+sx+1),:]
+    return {key: val[(py-sy):(py+sy),(px-sx):(px+sx),:]
             for key, val in data.items()}
 
 # Generate importance sampling map based on buffer and desired metric
@@ -361,35 +362,44 @@ def preprocess_input(filename, gt):
     return data
 
 if __name__ == "__main__":
-
     names = []
     if not os.path.isdir("samples/patches"):
         os.mkdir("samples/patches")
 
     # get all name of data
-    for sample_file in glob.glob('samples/raw/*-00128spp.exr'):
+    for sample_file in tqdm(glob.glob('samples/raw/*-00128spp.exr')):
         num = sample_file[len('samples/raw/'):sample_file.index('-')]
         gt_file = 'samples/raw/{}-08192spp.exr'.format(num)
 
         prev_time = time.time()
         data = preprocess_input(sample_file, gt_file)
 
-        # TODO
+        # TODO - randodm number of patches
         patches = importanceSampling(data)
         cropped = list(crop(data, tuple(pos), patch_size) for pos in patches)
 
+        # pdb.set_trace()
+
         # for debug
         # for i in range(6):
-        #     patch = cropped[i]['default']
-        #     data_ = np.clip(patch, 0, 1)**0.45454545
-        #     fig = plt.figure(figsize = (5,5))
-        #     imgplot = plt.imshow(data_)
+        #     fig = plt.figure()
+        #     pdb.set_trace()
+        #     patch1 = cropped[i]['finalInput']
+        #     patch2 = cropped[i]['finalGt']
+        #     data1_ = np.clip(patch1, 0, 1)**0.45454545
+        #     data2_ = np.clip(patch2, 0, 1)**0.45454545
+        #     fig.add_subplot(1, 2, 1)
+        #     imgplot = plt.imshow(data1_)
         #     imgplot.axes.get_xaxis().set_visible(False)
         #     imgplot.axes.get_yaxis().set_visible(False)
+        #     fig.add_subplot(1, 2, 2)
+        #     imgplot = plt.imshow(data2_)
+        #     imgplot.axes.get_xaxis().set_visible(False)
+        #     imgplot.axes.get_yaxis().set_visible(False)            
         #     fig.savefig('figure/{}_patch.png'.format(figure_num))
         #     figure_num += 1
         #     plt.close(fig)
 
-        with open('samples/patches/{}.pickle'.format(num), 'wb') as f:
-            pickle.dump(cropped, f, protocol=pickle.HIGHEST_PROTOCOL)
+        for i in range(len(cropped)):
+            torch.save(cropped[i], 'samples/patches/{}_{}.pt'.format(num, i))
         print(time.time() - prev_time)
