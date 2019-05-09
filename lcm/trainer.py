@@ -23,7 +23,7 @@ class Trainer():
 
         if not os.path.exists(self.model_dir): os.makedirs(self.model_dir)
 
-    def train(self, epochs=15, learning_rate=1e-4, show_images=False):
+    def train(self, epochs=200, learning_rate=1e-4, show_images=False):
         
         dataloader = self.loader
 
