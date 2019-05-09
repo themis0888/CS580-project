@@ -2,6 +2,7 @@ import os
 import paramiko
 import time
 import pyexr
+import getpass
 
 password = getpass.getpass("Password: ")
 prev_time = time.time()
