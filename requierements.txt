@@ -1,2 +1,4 @@
 paramiko
 pyexr
+matplotlib
+scipy
