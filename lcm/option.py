@@ -25,6 +25,8 @@ parser.add_argument('--dir_data', type=str, default='samples/',
                     help='dataset directory')
 parser.add_argument('--dir_patch', type=str, default='samples/patches/',
                     help='patchset directory')                    
+parser.add_argument('--dir_save_patch', type=str, default='samples/patches/',
+                    help='patchset directory')                                        
 # parser.add_argument('--data_train', type=str, default='DIV2K',
 #                     help='train dataset name')
 # parser.add_argument('--data_test', type=str, default='DIV2K',
