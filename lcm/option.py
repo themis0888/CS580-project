@@ -173,6 +173,8 @@ parser.add_argument('--print_freq', type=int, default=20,
 #                     help='save output results')
 
 # Sftp specification
+parser.add_argument('--download', action='store_true',
+                    help='download patches true')
 parser.add_argument('--remote_address', type=str, default="125.138.77.26",
                     help='remote address')
 parser.add_argument('--port', type=int, default=8385,
