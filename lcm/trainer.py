@@ -4,9 +4,14 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 
+from data import send_to_device
+from data import to_torch_tensors
+from data import show_data
+
 import os
 import time
 from tqdm import tqdm
+import pdb
 
 class Trainer(): 
     def __init__(self, args, loader, writer = None):
@@ -30,21 +35,21 @@ class Trainer():
         # instantiate networks
         print('Making the Network')
 
-        diffuseNet = Net(self.args).to(self.device)
-        specularNet = Net(self.args).to(self.device)
+        self.diffuseNet = Net(self.args).to(self.device)
+        self.specularNet = Net(self.args).to(self.device)
 
         if self.args.debug:
-            print(diffuseNet, "CUDA:", next(diffuseNet.parameters()).is_cuda)
-            print(specularNet, "CUDA:", next(specularNet.parameters()).is_cuda)
+            print(self.diffuseNet, "CUDA:", next(self.diffuseNet.parameters()).is_cuda)
+            print(self.specularNet, "CUDA:", next(self.specularNet.parameters()).is_cuda)
         
         criterion = nn.L1Loss()
 
-        optimizerDiff = optim.Adam(diffuseNet.parameters(), lr=learning_rate)
-        optimizerSpec = optim.Adam(specularNet.parameters(), lr=learning_rate)
+        optimizerDiff = optim.Adam(self.diffuseNet.parameters(), lr=learning_rate)
+        optimizerSpec = optim.Adam(self.specularNet.parameters(), lr=learning_rate)
 
         if self.args.resume:
-            diffuseNet.load_state_dict(torch.load(os.path.join(self.model_dir, 'diffuseNet.pt')))
-            specularNet.load_state_dict(torch.load(os.path.join(self.model_dir, 'specularNet.pt')))
+            self.diffuseNet.load_state_dict(torch.load(os.path.join(self.model_dir, 'diffuseNet.pt')))
+            self.specularNet.load_state_dict(torch.load(os.path.join(self.model_dir, 'specularNet.pt')))
 
         accuLossDiff = 0
         accuLossSpec = 0
@@ -52,9 +57,9 @@ class Trainer():
         writer_LossDiff = 0
         writer_LossSpec = 0
         
-        lDiff = []
-        lSpec = []
-        lFinal = []
+        # lDiff = []
+        # lSpec = []
+        # lFinal = []
 
         print('Start Training')
         start = time.time()
@@ -76,7 +81,7 @@ class Trainer():
                 optimizerDiff.zero_grad()
 
                 # forward + backward + optimize
-                outputDiff = diffuseNet(X_diff)
+                outputDiff = self.diffuseNet(X_diff)
 
                 # print(outputDiff.shape)
 
@@ -98,7 +103,7 @@ class Trainer():
                 optimizerSpec.zero_grad()
 
                 # forward + backward + optimize
-                outputSpec = specularNet(X_spec)
+                outputSpec = self.specularNet(X_spec)
 
                 if self.model == 'KPCN':
                     X_input = self.crop_like(X_spec, outputSpec)
@@ -143,8 +148,8 @@ class Trainer():
                     writer_LossDiff, writer_LossSpec = 0, 0
                     
                 if self.global_step % self.args.save_freq == 0:
-                    torch.save(diffuseNet.state_dict(), os.path.join(self.model_dir, 'diffuseNet.pt'))
-                    torch.save(specularNet.state_dict(), os.path.join(self.model_dir, 'specularNet.pt'))
+                    torch.save(self.diffuseNet.state_dict(), os.path.join(self.model_dir, 'diffuseNet.pt'))
+                    torch.save(self.specularNet.state_dict(), os.path.join(self.model_dir, 'specularNet.pt'))
             
 
             print("Epoch {}".format(epoch + 1))
@@ -154,9 +159,9 @@ class Trainer():
 
 
 
-            lDiff.append(accuLossDiff)
-            lSpec.append(accuLossSpec)
-            lFinal.append(accuLossFinal)
+            # lDiff.append(accuLossDiff)
+            # lSpec.append(accuLossSpec)
+            # lFinal.append(accuLossFinal)
             
             accuLossDiff = 0
             accuLossSpec = 0
@@ -165,7 +170,7 @@ class Trainer():
         print('Finished training in mode', self.model)
         print('Took', time.time() - start, 'seconds.')
         
-        # return diffuseNet, specularNet, lDiff, lSpec, lFinal
+        # return self.diffuseNet, self.specularNet, lDiff, lSpec, lFinal
 
     def crop_like(self, data, like, debug=False):
         if data.shape[-2:] != like.shape[-2:]:
@@ -216,3 +221,88 @@ class Trainer():
         res = torch.cat((reds, greens, blues), dim=1).view(-1, 3, h, w).to(self.device)
         
         return res
+
+    def unsqueeze_all(self, d):
+        for k, v in d.items():
+            d[k] = torch.unsqueeze(v, dim=0)
+        return d
+
+    def denoise(self, data, debug=False, img_num=None):
+        permutation = [0, 3, 1, 2]
+        eps = 0.00316
+        diffuseNet = self.diffuseNet.net
+        specularNet = self.specularNet.net
+        with torch.no_grad():
+            # pdb.set_trace()
+            out_channels = diffuseNet[len(diffuseNet)-1].out_channels
+            mode = 'DPCN' if out_channels == 3 else 'KPCN'
+            criterion = nn.L1Loss()
+            
+            if debug:
+                print("Out channels:", out_channels)
+                print("Detected mode", mode)
+            
+            # make singleton batch
+            data = send_to_device(to_torch_tensors(data))
+            if len(data['X_diff'].size()) != 4:
+                data = self.unsqueeze_all(data)
+            
+            print(data['X_diff'].size())
+            
+            X_diff = data['X_diff'].permute(permutation).to(self.device)
+            Y_diff = data['Reference'][:,:,:,:3].permute(permutation).to(self.device)
+
+            # forward + backward + optimize
+            outputDiff = diffuseNet(X_diff)
+
+            # print(outputDiff.shape)
+
+            if mode == 'KPCN':
+                X_input = self.crop_like(X_diff, outputDiff)
+                outputDiff = self.apply_kernel(outputDiff, X_input)
+
+            Y_diff = self.crop_like(Y_diff, outputDiff)
+
+            lossDiff = criterion(outputDiff, Y_diff).item()
+
+            # get the inputs
+            X_spec = data['X_spec'].permute(permutation).to(self.device)
+            Y_spec = data['Reference'][:,:,:,3:6].permute(permutation).to(self.device)
+
+            # forward + backward + optimize
+            outputSpec = specularNet(X_spec)
+
+            if mode == 'KPCN':
+                X_input = self.crop_like(X_spec, outputSpec)
+                outputSpec = self.apply_kernel(outputSpec, X_input)
+
+            Y_spec = self.crop_like(Y_spec, outputSpec)
+
+            lossSpec = criterion(outputSpec, Y_spec).item()
+
+            # calculate final ground truth error
+            albedo = data['origAlbedo'].permute(permutation).to(self.device)
+            albedo = self.crop_like(albedo, outputDiff)
+            outputFinal = outputDiff * (albedo + eps) + torch.exp(outputSpec) - 1.0
+
+            if img_num is not None:
+                # print("Sample, denoised, gt")
+                sz = 15
+                orig = self.crop_like(data['finalInput'].permute(permutation), outputFinal)
+                orig = orig.cpu().permute([0, 2, 3, 1]).numpy()[0,:]
+                show_data(orig, 'figure/{}_original.png'.format(img_num), figsize=(sz,sz), normalize=True)
+                img = outputFinal.cpu().permute([0, 2, 3, 1]).numpy()[0,:]
+                show_data(img, 'figure/{}_denoised.png'.format(img_num), figsize=(sz,sz), normalize=True)
+                gt = self.crop_like(data['finalGt'].permute(permutation), outputFinal)
+                gt = gt.cpu().permute([0, 2, 3, 1]).numpy()[0,:]
+                show_data(gt, 'figure/{}_gt.png'.format(img_num), figsize=(sz,sz), normalize=True)
+
+            Y_final = data['finalGt'].permute(permutation).to(self.device)
+            Y_final = self.crop_like(Y_final, outputFinal)
+            
+            lossFinal = criterion(outputFinal, Y_final).item()
+            
+            if debug:
+                print("LossDiff:", lossDiff)
+                print("LossSpec:", lossSpec)
+                print("LossFinal:", lossFinal)

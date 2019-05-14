@@ -368,9 +368,10 @@ if __name__ == "__main__":
     image_dir = args.dir_data
     if not os.path.isdir(patch_save_dir):
         os.mkdir(patch_save_dir)
-    f = open(patch_save_dir+'list.txt', 'w')
+    f = open(os.path.join(patch_save_dir,'list.txt'), 'w')
 
     # get all name of data
+    image_dir = os.path.join(image_dir, ' ')[0:-1]
     for sample_file in tqdm(glob.glob(image_dir+'*-00128spp.exr')):
         num = sample_file[len(image_dir):sample_file.index('-')]
         gt_file = image_dir+'{}-08192spp.exr'.format(num)
@@ -406,7 +407,7 @@ if __name__ == "__main__":
 
         for i in range(len(cropped)):
             file_name = '{}_{}.pt'.format(num, i)
-            torch.save(cropped[i], patch_save_dir+file_name)
+            torch.save(cropped[i], os.path.join(patch_save_dir, file_name))
             f.write(file_name+'\n')
         # print(time.time() - prev_time)
     f.close()
