@@ -21,13 +21,13 @@ import os
 
 figure_num = 0
 patch_size = args.patch_size # patches are 64x64
-n_patches = args.n_patches
 eps = 0.00316
 patch_dir = args.dir_patch
 
 # set device
-# device = args.device if torch.cuda.is_available() else 'cpu'
-device = torch.device('cpu')
+device = args.device
+# device = torch.device('cpu')
+# print(device)
 
 # delete preprocessed and importance map file after running
 # for time checking and other reasons
@@ -43,8 +43,8 @@ device = torch.device('cpu')
 class KPCNDataset(torch.utils.data.Dataset):
     def __init__(self):
         # get all name of data
-        self.names = glob.glob(patch_dir+"*")
-        print("files:", len(self.names))
+        self.names = glob.glob(os.path.join(patch_dir,"*"))
+        print("Num files:", len(self.names))
 
     def __len__(self):
         return len(self.names)

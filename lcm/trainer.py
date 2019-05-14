@@ -11,12 +11,12 @@ from tqdm import tqdm
 class Trainer(): 
     def __init__(self, args, loader, writer = None):
         self.args = args
+        self.model = args.model
         self.loader = loader
-        self.device = self.args.device
+        self.device = args.device
         self.recon_kernel_size = self.args.recon_kernel_size
         self.eps = 0.00316
         self.global_step = 0
-        self.model = args.model
         self.model_dir = os.path.join('model', self.args.model)
         self.print_freq = self.args.print_freq
         self.writer = writer
@@ -33,8 +33,9 @@ class Trainer():
         diffuseNet = Net(self.args).to(self.device)
         specularNet = Net(self.args).to(self.device)
 
-        print(diffuseNet, "CUDA:", next(diffuseNet.parameters()).is_cuda)
-        print(specularNet, "CUDA:", next(specularNet.parameters()).is_cuda)
+        if self.args.debug:
+            print(diffuseNet, "CUDA:", next(diffuseNet.parameters()).is_cuda)
+            print(specularNet, "CUDA:", next(specularNet.parameters()).is_cuda)
         
         criterion = nn.L1Loss()
 
@@ -64,6 +65,7 @@ class Trainer():
             print('Epoch {:04d}'.format(epoch))
             for i_batch, sample_batched in enumerate(tqdm(dataloader, ncols = 80)):
                 self.global_step += 1
+                
                 # loader_end = time.time()
                 
                 # get the inputs
@@ -114,14 +116,14 @@ class Trainer():
                     albedo = self.crop_like(albedo, outputDiff)
                     outputFinal = outputDiff * (albedo + self.eps) + torch.exp(outputSpec) - 1.0
 
-                    if False:#i_batch % 500:
-                        print("Sample, denoised, gt")
-                        sz = 3
-                        orig = self.crop_like(sample_batched['finalInput'].permute(permutation), outputFinal)
-                        orig = orig.cpu().permute([0, 2, 3, 1]).numpy()[0,:]
-                        img = outputFinal.cpu().permute([0, 2, 3, 1]).numpy()[0,:]
-                        gt = self.crop_like(sample_batched['finalGt'].permute(permutation), outputFinal)
-                        gt = gt.cpu().permute([0, 2, 3, 1]).numpy()[0,:]
+                    # if False:#i_batch % 500:
+                    #     print("Sample, denoised, gt")
+                    #     sz = 3
+                    #     orig = self.crop_like(sample_batched['finalInput'].permute(permutation), outputFinal)
+                    #     orig = orig.cpu().permute([0, 2, 3, 1]).numpy()[0,:]
+                    #     img = outputFinal.cpu().permute([0, 2, 3, 1]).numpy()[0,:]
+                    #     gt = self.crop_like(sample_batched['finalGt'].permute(permutation), outputFinal)
+                    #     gt = gt.cpu().permute([0, 2, 3, 1]).numpy()[0,:]
 
                     Y_final = sample_batched['finalGt'].permute(permutation).to(self.device)
                     Y_final = self.crop_like(Y_final, outputFinal)
@@ -163,7 +165,7 @@ class Trainer():
         print('Finished training in mode', self.model)
         print('Took', time.time() - start, 'seconds.')
         
-        return diffuseNet, specularNet, lDiff, lSpec, lFinal
+        # return diffuseNet, specularNet, lDiff, lSpec, lFinal
 
     def crop_like(self, data, like, debug=False):
         if data.shape[-2:] != like.shape[-2:]:

@@ -21,8 +21,8 @@ from tqdm import tqdm
 
 
 figure_num = 0
-patch_size = 64 # patches are 64x64
-n_patches = 400
+patch_size = args.patch_size
+n_patches = args.n_patches
 eps = 0.00316
 
 # set device to GPU if available
