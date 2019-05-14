@@ -1,7 +1,6 @@
 from option import args
 
 import numpy as np
-import pyexr
 import matplotlib
 matplotlib.use('Agg') 
 import matplotlib.pyplot as plt
@@ -21,13 +20,13 @@ import os
 
 figure_num = 0
 patch_size = args.patch_size # patches are 64x64
-n_patches = args.n_patches
 eps = 0.00316
 patch_dir = args.dir_patch
 
 # set device
-# device = args.device if torch.cuda.is_available() else 'cpu'
-device = torch.device('cpu')
+device = args.device
+# device = torch.device('cpu')
+# print(device)
 
 # delete preprocessed and importance map file after running
 # for time checking and other reasons
@@ -43,8 +42,8 @@ device = torch.device('cpu')
 class KPCNDataset(torch.utils.data.Dataset):
     def __init__(self):
         # get all name of data
-        self.names = glob.glob(patch_dir+"*")
-        print("files:", len(self.names))
+        self.names = glob.glob(os.path.join(patch_dir,"*"))
+        print("Num files:", len(self.names))
 
     def __len__(self):
         return len(self.names)
@@ -79,6 +78,20 @@ def send_to_device(data):
             if isinstance(v, torch.Tensor):
                 data[i] = v.to(device)        
     return data
+
+###############
+## show data ##
+###############
+
+def show_data(data, figure_path, figsize=(15, 15), normalize=False):
+    if normalize:
+        data = np.clip(data, 0, 1)**0.45454545
+    fig = plt.figure(figsize=figsize)
+    imgplot = plt.imshow(data, aspect='equal')
+    imgplot.axes.get_xaxis().set_visible(False)
+    imgplot.axes.get_yaxis().set_visible(False)
+    fig.savefig(figure_path)
+    plt.close(fig)
 
 ###############
 ## test code ##

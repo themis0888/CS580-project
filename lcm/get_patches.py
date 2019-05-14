@@ -1,3 +1,4 @@
+from option import args
 import numpy as np
 import pyexr
 import matplotlib
@@ -20,8 +21,8 @@ from tqdm import tqdm
 
 
 figure_num = 0
-patch_size = 64 # patches are 64x64
-n_patches = 400
+patch_size = args.patch_size
+n_patches = args.n_patches
 eps = 0.00316
 
 # set device to GPU if available
@@ -363,15 +364,19 @@ def preprocess_input(filename, gt):
 
 if __name__ == "__main__":
     names = []
-    if not os.path.isdir("samples/patches"):
-        os.mkdir("samples/patches")
+    patch_save_dir = args.dir_save_patch
+    image_dir = args.dir_data
+    if not os.path.isdir(patch_save_dir):
+        os.mkdir(patch_save_dir)
+    f = open(os.path.join(patch_save_dir,'list.txt'), 'w')
 
     # get all name of data
-    for sample_file in tqdm(glob.glob('samples/raw/*-00128spp.exr')):
-        num = sample_file[len('samples/raw/'):sample_file.index('-')]
-        gt_file = 'samples/raw/{}-08192spp.exr'.format(num)
+    image_dir = os.path.join(image_dir, ' ')[0:-1]
+    for sample_file in tqdm(glob.glob(image_dir+'*-00128spp.exr')):
+        num = sample_file[len(image_dir):sample_file.index('-')]
+        gt_file = image_dir+'{}-08192spp.exr'.format(num)
 
-        prev_time = time.time()
+        # prev_time = time.time()
         data = preprocess_input(sample_file, gt_file)
 
         # TODO - randodm number of patches
@@ -401,5 +406,8 @@ if __name__ == "__main__":
         #     plt.close(fig)
 
         for i in range(len(cropped)):
-            torch.save(cropped[i], 'samples/patches/{}_{}.pt'.format(num, i))
-        print(time.time() - prev_time)
+            file_name = '{}_{}.pt'.format(num, i)
+            torch.save(cropped[i], os.path.join(patch_save_dir, file_name))
+            f.write(file_name+'\n')
+        # print(time.time() - prev_time)
+    f.close()

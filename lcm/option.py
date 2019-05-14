@@ -1,4 +1,5 @@
 import argparse
+import torch
 # import template
 
 parser = argparse.ArgumentParser(description='what?')
@@ -23,8 +24,10 @@ parser.add_argument('--device', default='cuda',
 # Data specifications
 parser.add_argument('--dir_data', type=str, default='samples/',
                     help='dataset directory')
-parser.add_argument('--dir_patch', type=str, default='samples/patches/',
+parser.add_argument('--dir_patch', type=str, default='patches/',
                     help='patchset directory')                    
+parser.add_argument('--dir_save_patch', type=str, default='samples/patches/',
+                    help='patchset directory')                                        
 # parser.add_argument('--data_train', type=str, default='DIV2K',
 #                     help='train dataset name')
 # parser.add_argument('--data_test', type=str, default='DIV2K',
@@ -115,8 +118,8 @@ parser.add_argument('--resume', action='store_true',
                     help='restart learning')
 # parser.add_argument('--test_every', type=int, default=1000,
 #                     help='do test per every N batches')
-# parser.add_argument('--epochs', type=int, default=300,
-#                     help='number of epochs to train')
+parser.add_argument('--epochs', type=int, default=200,
+                    help='number of epochs to train')
 parser.add_argument('--batch_size', type=int, default=4,
                     help='input batch size for training')
 # parser.add_argument('--split_batch', type=int, default=1,
@@ -169,9 +172,19 @@ parser.add_argument('--print_freq', type=int, default=20,
 # parser.add_argument('--save_results', action='store_true',
 #                     help='save output results')
 
+# Sftp specification
+parser.add_argument('--download', action='store_true',
+                    help='download patches true')
+parser.add_argument('--remote_address', type=str, default="125.138.77.26",
+                    help='remote address')
+parser.add_argument('--port', type=int, default=8385,
+                    help='remote address port')
+parser.add_argument('--username', type=str, default="tlcm",
+                    help='remote server username')
+parser.add_argument('--remote_path', type=str, default="/media/tlcm/main hard/patches/",
+                    help='remote patch path')
 
 args = parser.parse_args()
-# template.set_template(args)
 
 # args.scale = list(map(lambda x: int(x), args.scale.split('+')))
 # args.data_train = args.data_train.split('+')
@@ -185,3 +198,6 @@ for arg in vars(args):
         vars(args)[arg] = True
     elif vars(args)[arg] == 'False':
         vars(args)[arg] = False
+
+args.device = args.device if torch.cuda.is_available() else 'cpu'
+print("Device: ", args.device)
