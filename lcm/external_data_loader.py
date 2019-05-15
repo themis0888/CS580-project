@@ -84,11 +84,9 @@ class ExternalDataLoader:
         file_name_y = file_id + "08192.exr"
         file_path_y = os.path.join(scene_name, file_name)
         file_y = self.get_file(file_path_y)
-
         
-        return file_x, file_y
+        return file_x, file_y, file_id
         
-
     def get_batch(self, idx, spp=128):
         X = []
         Y = []
@@ -99,7 +97,7 @@ class ExternalDataLoader:
             this_batch_size = self.batch_size
 
         for pos in range(this_batch_size):
-            x, y = self.get_data(idx * self.batch_size + pos, spp=spp)
+            x, y, _ = self.get_data(idx * self.batch_size + pos, spp=spp)
             X.append(x)
             Y.append(y)
         return X, Y
@@ -118,12 +116,13 @@ if __name__ == "__main__":
     print("Batches per spp: {}".format(external_data_loader.batches_amount))
 
     print("----- Downloading Example File -----")
-    x, y = external_data_loader.get_data(0)
+    x, y, file_id = external_data_loader.get_data(0)
     print("Width:", x.width)
     print("Height:", x.height)
     print("Available channels:")
     x.describe_channels()
     print("Default channels:", x.channel_map['default'])
+    print("File Id:", file_id)
     print("--------------- Done ---------------")
 
     # Takes a long time

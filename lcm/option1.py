@@ -22,7 +22,7 @@ parser.add_argument('--device', default='cuda',
                     help='using cpu or gpu')
 
 # Data specifications
-parser.add_argument('--dir_train', type=str, default='train/',
+parser.add_argument('--dir_train', type=str, default='/home/ubuntu/data',
                     help='train dataset directory')
 parser.add_argument('--dir_test', type=str, default='test/',
                     help='test dataset directory')

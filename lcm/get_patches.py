@@ -19,7 +19,8 @@ import pickle
 import os
 import sys
 from tqdm import tqdm
-
+from external_data_loader import ExternalDataLoader
+import getpass
 
 figure_num = 0
 patch_size = args.patch_size
@@ -258,16 +259,13 @@ def remove_channels(data, channels):
 
             
 # returns network input data from noisy .exr file
-def preprocess_input(filename, gt):
-    file = pyexr.open(filename)
+def preprocess_input(file, file_gt):
     data = file.get_all()
 
-    
     # just in case
     for k, v in data.items():
         data[k] = np.nan_to_num(v)
         
-    file_gt = pyexr.open(gt)
     gt_data = file_gt.get_all()
     
     # just in case
@@ -363,33 +361,50 @@ def preprocess_input(filename, gt):
     
     return data
 
+def process_files(file, file_gt, num, patch_dir, f):
+    if args.check_time:
+            prev_time = time.time()
+    data = preprocess_input(file, file_gt)
+    patches = importanceSampling(data)
+    cropped = list(crop(data, tuple(pos), patch_size) for pos in patches)
+
+    for i in range(len(cropped)):
+        file_name = '{}_{}.pt'.format(num, i)
+        torch.save(cropped[i], os.path.join(patch_dir, file_name))
+        if args.make_list:
+            f.write(file_name+'\n')
+    if args.check_time:
+        print('Time to get patches from one image', time.time() - prev_time)
+
+
 if __name__ == "__main__":
     names = []
     patch_dir = args.dir_patch
     image_dir = args.dir_data
+
+    download = args.download_images
+
     if not os.path.isdir(patch_dir):
         os.makedir(patch_dir)
+    f = None
     if args.make_list:
-        f = open(os.path.join(patch_dir,'list.txt'), 'w')
+        f = open(os.path.join(patch_dir,'list.txt'), 'w')        
 
-    # get all name of data
-    image_dir = os.path.join(image_dir, ' ')[0:-1]
-    for sample_file in tqdm(glob.glob(image_dir+'*-00128spp.exr')):
-        num = sample_file[len(image_dir):sample_file.index('-')]
-        gt_file = image_dir+'{}-08192spp.exr'.format(num)
-
-        if args.check_time:
-            prev_time = time.time()
-        data = preprocess_input(sample_file, gt_file)
-        patches = importanceSampling(data)
-        cropped = list(crop(data, tuple(pos), patch_size) for pos in patches)
-
-        for i in range(len(cropped)):
-            file_name = '{}_{}.pt'.format(num, i)
-            torch.save(cropped[i], os.path.join(patch_dir, file_name))
-            if args.make_list:
-                f.write(file_name+'\n')
-        if args.check_time:
-            print('Time to get patches from one image', time.time() - prev_time)
+    if download:
+        password = getpass.getpass("Password: ")
+        external_data_loader = ExternalDataLoader(password, batch_size=4)
+        for idx in tqdm(range(external_data_loader.files_amount)):
+            file, file_gt, num = external_data_loader.get_data(idx)
+            process_files(file, file_gt, num, patch_dir, f)
+    else:
+        # get all name of data
+        image_dir = os.path.join(image_dir, ' ')[0:-1]
+        for sample_file in tqdm(glob.glob(image_dir+'*-00128spp.exr')):
+            num = sample_file[len(image_dir):sample_file.index('-')]
+            gt_file = image_dir+'{}-08192spp.exr'.format(num)
+            file = pyexr.open(sample_file)
+            file_gt = pyexr.open(gt_file)
+            process_files(file, file_gt, num, patch_dir, f)
+  
     if args.make_list:
         f.close()
