@@ -65,7 +65,7 @@ class ExternalDataLoader:
         scene_name = None
         for scene, file_list in self.scene_files.items():
             offset = int(len(file_list) / len(self.possible_spp))
-            if idx > total + offset:
+            if idx >=total + offset:
                 total += offset
                 continue
             scene_name = scene
