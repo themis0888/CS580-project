@@ -290,6 +290,8 @@ class Trainer():
                 sz = 15
                 orig = self.crop_like(data['finalInput'].permute(permutation), outputFinal)
                 orig = orig.cpu().permute([0, 2, 3, 1]).numpy()[0,:]
+                if not os.path.isdir('figure'):
+                    os.makedir('figure')
                 show_data(orig, 'figure/{}_original.png'.format(img_num), figsize=(sz,sz), normalize=True)
                 img = outputFinal.cpu().permute([0, 2, 3, 1]).numpy()[0,:]
                 show_data(img, 'figure/{}_denoised.png'.format(img_num), figsize=(sz,sz), normalize=True)

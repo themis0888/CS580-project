@@ -2,7 +2,7 @@ import argparse
 import torch
 # import template
 
-parser = argparse.ArgumentParser(description='what?')
+parser = argparse.ArgumentParser()
 
 parser.add_argument('--debug', action='store_true',
                     help='Enables debug mode')
@@ -10,8 +10,8 @@ parser.add_argument('--debug', action='store_true',
 #                     help='You can set various templates in option.py')
 
 # Hardware specifications
-parser.add_argument('--n_threads', type=int, default=0,
-                    help='number of threads for data loading')
+# parser.add_argument('--n_threads', type=int, default=0,
+#                     help='number of threads for data loading')
 # parser.add_argument('--cpu', action='store_true',
 #                     help='use cpu only')
 # parser.add_argument('--n_GPUs', type=int, default=1,
@@ -22,44 +22,12 @@ parser.add_argument('--device', default='cuda',
                     help='using cpu or gpu')
 
 # Data specifications
-parser.add_argument('--dir_data', type=str, default='samples/',
-                    help='dataset directory')
-parser.add_argument('--dir_patch', type=str, default='patches/',
-                    help='patchset directory')                    
-parser.add_argument('--dir_save_patch', type=str, default='samples/patches/',
-                    help='patchset directory')                                        
-# parser.add_argument('--data_train', type=str, default='DIV2K',
-#                     help='train dataset name')
-# parser.add_argument('--data_test', type=str, default='DIV2K',
-#                     help='test dataset name')
-# parser.add_argument('--data_range', type=str, default='1-800/801-810',
-#                     help='train/test data range')
-# parser.add_argument('--ext', type=str, default='sep',
-#                     help='dataset file extension')
-# parser.add_argument('--scale', type=str, default='2',
-#                     help='super resolution scale')
-parser.add_argument('--patch_size', type=int, default=64,
-                    help='output patch size')
-parser.add_argument('--n_patches', type=int, default=400,
-                    help='the number of pathces')
-# parser.add_argument('--rgb_range', type=int, default=255,
-#                     help='maximum value of RGB')
-# parser.add_argument('--n_colors', type=int, default=3,
-#                     help='number of color channels to use')
-# parser.add_argument('--eps', type=int, default=0.00316,
-#                     help='number of color channels to use')                    
-# parser.add_argument('--chop', action='store_true',
-#                     help='enable memory-efficient forward')
-# parser.add_argument('--no_augment', action='store_true',
-#                     help='do not use data augmentation')
-# parser.add_argument('--sampling', action='store_true',
-#                     help='use hard-patch sampling')
-# parser.add_argument('--res_learn', action='store_true',
-#                     help='use hard-patch sampling') 
-# parser.add_argument('--up_scaled', action='store_true',
-#                     help='use hard-patch sampling')                                       
-# parser.add_argument('--sampling_interval', type=int, default = 2,
-#                     help='update patch sampling probability interval')
+parser.add_argument('--dir_train', type=str, default='train/',
+                    help='train dataset directory')
+parser.add_argument('--dir_test', type=str, default='test/',
+                    help='test dataset directory')
+# parser.add_argument('--patch_size', type=int, default=64,
+#                     help='output patch size')
 
 # Model specifications
 parser.add_argument('--model', default='KPCN',
@@ -172,32 +140,19 @@ parser.add_argument('--print_freq', type=int, default=20,
 # parser.add_argument('--save_results', action='store_true',
 #                     help='save output results')
 
-# Sftp specification
-parser.add_argument('--download', action='store_true',
-                    help='download patches true')
-parser.add_argument('--remote_address', type=str, default="125.138.77.26",
-                    help='remote address')
-parser.add_argument('--port', type=int, default=8385,
-                    help='remote address port')
-parser.add_argument('--username', type=str, default="tlcm",
-                    help='remote server username')
-parser.add_argument('--remote_path', type=str, default="/media/tlcm/main hard/patches/",
-                    help='remote patch path')
-
 args = parser.parse_args()
 
-# args.scale = list(map(lambda x: int(x), args.scale.split('+')))
-# args.data_train = args.data_train.split('+')
-# args.data_test = args.data_test.split('+')
-
-# if args.epochs == 0:
-#     args.epochs = 1e3
+def to_dir_path(path):
+    path = path if path[-1] == '/' else path+'/'
+    return path
 
 for arg in vars(args):
     if vars(args)[arg] == 'True':
         vars(args)[arg] = True
     elif vars(args)[arg] == 'False':
         vars(args)[arg] = False
+    elif arg.startswith('dir_'):
+        vars(args)[arg] = to_dir_path(vars(args)[arg])
 
 args.device = args.device if torch.cuda.is_available() else 'cpu'
 print("Device: ", args.device)

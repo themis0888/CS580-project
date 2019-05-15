@@ -1,4 +1,4 @@
-from option import args
+from option1 import args
 from trainer import Trainer
 from tensorboardX import SummaryWriter
 from data import KPCNDataset

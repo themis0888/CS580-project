@@ -1,4 +1,4 @@
-from option import args
+from option1 import args
 
 import numpy as np
 import matplotlib
@@ -19,7 +19,6 @@ import pickle
 import os
 
 figure_num = 0
-patch_size = args.patch_size # patches are 64x64
 eps = 0.00316
 patch_dir = args.dir_patch
 
@@ -27,10 +26,6 @@ patch_dir = args.dir_patch
 device = args.device
 # device = torch.device('cpu')
 # print(device)
-
-# delete preprocessed and importance map file after running
-# for time checking and other reasons
-# file_delete = False
 
 ############################
 ### Make a dataset class ###
@@ -101,16 +96,10 @@ if __name__ == "__main__":
     dataset = KPCNDataset()
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=4,
                                 shuffle=True, num_workers=1)
-    # prev_time = time.time()
+
     for i_batch, sample_batched in enumerate(dataloader):
-        # pdb.set_trace()
         if i_batch == 2:
             break
-            
-
-        # show each patches
-        
-        # pdb.set_trace()
         for i in range(4):
             fig = plt.figure()
             patch1 = sample_batched['finalInput'][i]
@@ -128,13 +117,3 @@ if __name__ == "__main__":
             fig.savefig('figure/{}_patch.png'.format(figure_num))
             figure_num += 1
             plt.close(fig)
-    
-    # print(time.time() - prev_time)
-
-    # clear file
-    # for file in os.listdir("samples/imp"):
-    #     os.remove("samples/imp/"+file)
-    # os.rmdir("samples/imp")
-    # for file in os.listdir("samples/proc"):
-    #     os.remove("samples/proc/"+file)
-    # os.rmdir("samples/proc")

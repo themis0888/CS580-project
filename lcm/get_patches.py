@@ -1,4 +1,4 @@
-from option import args
+from option2 import args
 import numpy as np
 import pyexr
 import matplotlib
@@ -17,6 +17,7 @@ import pdb
 import time
 import pickle
 import os
+import sys
 from tqdm import tqdm
 
 
@@ -364,11 +365,12 @@ def preprocess_input(filename, gt):
 
 if __name__ == "__main__":
     names = []
-    patch_save_dir = args.dir_save_patch
+    patch_dir = args.dir_patch
     image_dir = args.dir_data
-    if not os.path.isdir(patch_save_dir):
-        os.mkdir(patch_save_dir)
-    f = open(os.path.join(patch_save_dir,'list.txt'), 'w')
+    if not os.path.isdir(patch_dir):
+        os.makedir(patch_dir)
+    if args.make_list:
+        f = open(os.path.join(patch_dir,'list.txt'), 'w')
 
     # get all name of data
     image_dir = os.path.join(image_dir, ' ')[0:-1]
@@ -376,38 +378,18 @@ if __name__ == "__main__":
         num = sample_file[len(image_dir):sample_file.index('-')]
         gt_file = image_dir+'{}-08192spp.exr'.format(num)
 
-        # prev_time = time.time()
+        if args.check_time:
+            prev_time = time.time()
         data = preprocess_input(sample_file, gt_file)
-
-        # TODO - randodm number of patches
         patches = importanceSampling(data)
         cropped = list(crop(data, tuple(pos), patch_size) for pos in patches)
 
-        # pdb.set_trace()
-
-        # for debug
-        # for i in range(6):
-        #     fig = plt.figure()
-        #     pdb.set_trace()
-        #     patch1 = cropped[i]['finalInput']
-        #     patch2 = cropped[i]['finalGt']
-        #     data1_ = np.clip(patch1, 0, 1)**0.45454545
-        #     data2_ = np.clip(patch2, 0, 1)**0.45454545
-        #     fig.add_subplot(1, 2, 1)
-        #     imgplot = plt.imshow(data1_)
-        #     imgplot.axes.get_xaxis().set_visible(False)
-        #     imgplot.axes.get_yaxis().set_visible(False)
-        #     fig.add_subplot(1, 2, 2)
-        #     imgplot = plt.imshow(data2_)
-        #     imgplot.axes.get_xaxis().set_visible(False)
-        #     imgplot.axes.get_yaxis().set_visible(False)            
-        #     fig.savefig('figure/{}_patch.png'.format(figure_num))
-        #     figure_num += 1
-        #     plt.close(fig)
-
         for i in range(len(cropped)):
             file_name = '{}_{}.pt'.format(num, i)
-            torch.save(cropped[i], os.path.join(patch_save_dir, file_name))
-            f.write(file_name+'\n')
-        # print(time.time() - prev_time)
-    f.close()
+            torch.save(cropped[i], os.path.join(patch_dir, file_name))
+            if args.make_list:
+                f.write(file_name+'\n')
+        if args.check_time:
+            print('Time to get patches from one image', time.time() - prev_time)
+    if args.make_list:
+        f.close()
