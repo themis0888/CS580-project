@@ -2,3 +2,4 @@ paramiko
 pyexr
 matplotlib
 scipy
+tqdm
