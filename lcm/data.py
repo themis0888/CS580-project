@@ -20,7 +20,6 @@ import os
 
 figure_num = 0
 eps = 0.00316
-patch_dir = args.dir_patch
 
 # set device
 device = args.device
@@ -35,8 +34,12 @@ device = args.device
 # cropped = send_to_device(cropped)
 # It contains None data for some index because of pruning data by importance sampling
 class KPCNDataset(torch.utils.data.Dataset):
-    def __init__(self):
+    def __init__(self, train=True):
         # get all name of data
+        if train:
+            patch_dir = args.dir_train
+        else:
+            patch_dir = args.dir_test
         self.names = glob.glob(os.path.join(patch_dir,"*"))
         print("Num files:", len(self.names))
 
