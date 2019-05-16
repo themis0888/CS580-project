@@ -4,9 +4,7 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 
-from data import send_to_device
-from data import to_torch_tensors
-from data import show_data
+from data import send_to_device, to_torch_tensors, show_data, save_img
 
 import os
 import time
@@ -14,10 +12,11 @@ from tqdm import tqdm
 import pdb
 
 class Trainer(): 
-    def __init__(self, args, loader, writer = None):
+    def __init__(self, args, train_loader, test_loader, writer = None):
         self.args = args
         self.model = args.model
-        self.loader = loader
+        self.train_loader = train_loader
+        self.test_loader = test_loader
         self.device = args.device
         self.recon_kernel_size = self.args.recon_kernel_size
         self.eps = 0.00316
@@ -27,16 +26,21 @@ class Trainer():
         self.writer = writer
 
         if not os.path.exists(self.model_dir): os.makedirs(self.model_dir)
-
-    def train(self, epochs=200, learning_rate=1e-4, show_images=False):
         
-        dataloader = self.loader
-
-        # instantiate networks
         print('Making the Network')
 
         self.diffuseNet = Net(self.args).to(self.device)
         self.specularNet = Net(self.args).to(self.device)
+
+    def train(self, epochs=200, learning_rate=1e-4, show_images=False):
+        
+        dataloader = self.train_loader
+
+        # instantiate networks
+        # print('Making the Network')
+
+        # self.diffuseNet = Net(self.args).to(self.device)
+        # self.specularNet = Net(self.args).to(self.device)
 
         if self.args.debug:
             print(self.diffuseNet, "CUDA:", next(self.diffuseNet.parameters()).is_cuda)
@@ -142,7 +146,7 @@ class Trainer():
                 writer_LossSpec += iter_lossSpec
                 # loader_start = time.time()
 
-                if self.global_step-1 % self.print_freq ==0:
+                if (self.global_step-1) % self.print_freq == 0:
                     self.writer.add_scalars('data/LossDiff', {self.model: writer_LossDiff/self.print_freq}, self.global_step)
                     self.writer.add_scalars('data/LossSpec', {self.model: writer_LossSpec/self.print_freq}, self.global_step)
                     writer_LossDiff, writer_LossSpec = 0, 0
@@ -226,8 +230,17 @@ class Trainer():
         for k, v in d.items():
             d[k] = torch.unsqueeze(v, dim=0)
         return d
+    
+    def test(self):
+        if self.args.only_test:
+            self.diffuseNet.load_state_dict(torch.load(os.path.join(self.model_dir, 'diffuseNet.pt')))
+            self.specularNet.load_state_dict(torch.load(os.path.join(self.model_dir, 'specularNet.pt')))
 
-    def denoise(self, data, debug=False, img_num=None):
+        for i_batch, tp in enumerate(tqdm(self.test_loader)):
+            img_num, test_data = tp
+            self.denoise(test_data, img_num[0])
+
+    def denoise(self, data, img_num, debug=False):
         permutation = [0, 3, 1, 2]
         eps = 0.00316
         diffuseNet = self.diffuseNet.net
@@ -246,8 +259,8 @@ class Trainer():
             data = send_to_device(to_torch_tensors(data))
             if len(data['X_diff'].size()) != 4:
                 data = self.unsqueeze_all(data)
-            
-            print(data['X_diff'].size())
+            if debug:
+                print(data['X_diff'].size())
             
             X_diff = data['X_diff'].permute(permutation).to(self.device)
             Y_diff = data['Reference'][:,:,:,:3].permute(permutation).to(self.device)
@@ -285,19 +298,11 @@ class Trainer():
             albedo = self.crop_like(albedo, outputDiff)
             outputFinal = outputDiff * (albedo + eps) + torch.exp(outputSpec) - 1.0
 
-            if img_num is not None:
-                # print("Sample, denoised, gt")
-                sz = 15
-                orig = self.crop_like(data['finalInput'].permute(permutation), outputFinal)
-                orig = orig.cpu().permute([0, 2, 3, 1]).numpy()[0,:]
-                if not os.path.isdir('figure'):
-                    os.makedir('figure')
-                show_data(orig, 'figure/{}_original.png'.format(img_num), figsize=(sz,sz), normalize=True)
-                img = outputFinal.cpu().permute([0, 2, 3, 1]).numpy()[0,:]
-                show_data(img, 'figure/{}_denoised.png'.format(img_num), figsize=(sz,sz), normalize=True)
-                gt = self.crop_like(data['finalGt'].permute(permutation), outputFinal)
-                gt = gt.cpu().permute([0, 2, 3, 1]).numpy()[0,:]
-                show_data(gt, 'figure/{}_gt.png'.format(img_num), figsize=(sz,sz), normalize=True)
+            # Save result images
+            img = outputFinal.cpu().permute([0, 2, 3, 1]).numpy()[0,:]
+            if not os.path.exists('result'):
+                os.makedirs('result')
+            save_img(img, 'result/{}_denoised.png'.format(img_num))
 
             Y_final = data['finalGt'].permute(permutation).to(self.device)
             Y_final = self.crop_like(Y_final, outputFinal)
