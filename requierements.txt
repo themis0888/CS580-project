@@ -3,3 +3,4 @@ pyexr
 matplotlib
 scipy
 tqdm
+tensorboardX

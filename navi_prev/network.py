@@ -1,10 +1,13 @@
+import pdb
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision
 import torchvision.transforms as transforms
 
-import pdb
+
+
 
 class Net(nn.Module):
     def __init__(self, args):
@@ -27,6 +30,9 @@ class Net(nn.Module):
                     nn.Conv2d(args.nc_feats, args.nc_feats, args.kernel_size),
                     nn.ReLU()
             ]
+            
+            params = sum(p.numel() for p in layers[-2].parameters() if p.requires_grad)
+            # print(params)
             
         nc_output = 3 if self.model == 'DPCN' else args.recon_kernel_size**2
         layers += [nn.Conv2d(args.nc_feats, nc_output, args.kernel_size)]#, padding=18)]
