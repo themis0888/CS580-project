@@ -1,4 +1,3 @@
-from option2 import args
 import numpy as np
 import pyexr
 import matplotlib
@@ -19,13 +18,9 @@ import pickle
 import os
 import sys
 from tqdm import tqdm
+
 from external_data_loader import ExternalDataLoader
 import getpass
-
-figure_num = 0
-patch_size = args.patch_size
-n_patches = args.n_patches
-eps = 0.00316
 
 # set device to GPU if available
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -176,9 +171,7 @@ def prunePatches(shape, patches, patchsize, imp):
 
     return pruned[:count,:]
 
-def importanceSampling(data):
-    global patch_size, n_patches, figure_num
-    
+def importanceSampling(data, patch_size, n_patches, figure_num):
     # extract buffers
     buffers = []
     for b in ['default', 'normal']:
@@ -207,159 +200,6 @@ def importanceSampling(data):
             
     return (pruned + pad)
 
-#######################################
-## pre-process and post-process data ##
-#######################################
-
-def build_data(img):
-    data = img.get()
-
-
-def preprocess_diffuse(diffuse, albedo):
-    return diffuse / (albedo + eps)
-
-
-def postprocess_diffuse(diffuse, albedo):
-    return diffuse * (albedo + eps)
-
-
-def preprocess_specular(specular):
-    assert(np.sum(specular < 0) == 0)
-    return np.log(specular + 1)
-
-
-def postprocess_specular(specular):
-    return np.exp(specular) - 1
-
-
-def preprocess_diff_var(variance, albedo):
-    return variance / (albedo + eps)**2
-
-
-def preprocess_spec_var(variance, specular):
-    return variance / (specular+1e-5)**2
-
-
-def gradients(data):
-    h, w, c = data.shape
-    dX = data[:, 1:, :] - data[:, :w - 1, :]
-    dY = data[1:, :, :] - data[:h - 1, :, :]
-    # padding with zeros
-    dX = np.concatenate((np.zeros([h,1,c], dtype=np.float32),dX), axis=1)
-    dY = np.concatenate((np.zeros([1,w,c], dtype=np.float32),dY), axis=0)
-    
-    return np.concatenate((dX, dY), axis=2)
-
-def remove_channels(data, channels):
-    for c in channels:
-        if c in data:
-            del data[c]
-        else:
-            print("Channel {} not found in data!".format(c))
-
-            
-# returns network input data from noisy .exr file
-def preprocess_input(file, file_gt):
-    data = file.get_all()
-
-    # just in case
-    for k, v in data.items():
-        data[k] = np.nan_to_num(v)
-        
-    gt_data = file_gt.get_all()
-    
-    # just in case
-    for k, v in gt_data.items():
-        gt_data[k] = np.nan_to_num(v)
-        
-        
-    # clip specular data so we don't have negative values in logarithm
-    data['specular'] = np.clip(data['specular'], 0, np.max(data['specular']))
-    data['specularVariance'] = np.clip(data['specularVariance'], 0, np.max(data['specularVariance']))
-    gt_data['specular'] = np.clip(data['specular'], 0, np.max(data['specular']))
-    gt_data['specularVariance'] = np.clip(gt_data['specularVariance'], 0, np.max(gt_data['specularVariance']))
-        
-        
-    # save albedo
-    data['origAlbedo'] = data['albedo'].copy()
-        
-    # save reference data (diffuse and specular)
-    diff_ref = preprocess_diffuse(gt_data['diffuse'], gt_data['albedo'])
-    spec_ref = preprocess_specular(gt_data['specular'])
-    diff_sample = preprocess_diffuse(data['diffuse'], data['albedo'])
-    
-    data['Reference'] = np.concatenate((diff_ref[:,:,:3].copy(), spec_ref[:,:,:3].copy()), axis=2)
-    data['Sample'] = np.concatenate((diff_sample, data['specular']), axis=2)
-    
-    # save final input and reference for error calculation
-    # apply albedo and add specular component to get final color
-    data['finalGt'] = gt_data['default']#postprocess_diffuse(data['Reference'][:,:,:3], data['albedo']) + data['Reference'][:,:,3:]
-    data['finalInput'] = data['default']#postprocess_diffuse(data['diffuse'][:,:,:3], data['albedo']) + data['specular'][:,:,3:]
-        
-        
-        
-        
-    # preprocess diffuse
-    data['diffuse'] = preprocess_diffuse(data['diffuse'], data['albedo'])
-
-    # preprocess diffuse variance
-    data['diffuseVariance'] = preprocess_diff_var(data['diffuseVariance'], data['albedo'])
-
-    # preprocess specular
-    data['specular'] = preprocess_specular(data['specular'])
-
-    # preprocess specular variance
-    data['specularVariance'] = preprocess_spec_var(data['specularVariance'], data['specular'])
-
-    # just in case
-    data['depth'] = np.clip(data['depth'], 0, np.max(data['depth']))
-
-    # normalize depth
-    max_depth = np.max(data['depth'])
-    if (max_depth != 0):
-        data['depth'] /= max_depth
-        # also have to transform the variance
-        data['depthVariance'] /= max_depth * max_depth
-
-    # Calculate gradients of features (not including variances)
-    data['gradNormal'] = gradients(data['normal'][:, :, :3].copy())
-    data['gradDepth'] = gradients(data['depth'][:, :, :1].copy())
-    data['gradAlbedo'] = gradients(data['albedo'][:, :, :3].copy())
-    data['gradSpecular'] = gradients(data['specular'][:, :, :3].copy())
-    data['gradDiffuse'] = gradients(data['diffuse'][:, :, :3].copy())
-    data['gradIrrad'] = gradients(data['default'][:, :, :3].copy())
-
-    # append variances and gradients to data tensors
-    data['diffuse'] = np.concatenate((data['diffuse'], data['diffuseVariance'], data['gradDiffuse']), axis=2)
-    data['specular'] = np.concatenate((data['specular'], data['specularVariance'], data['gradSpecular']), axis=2)
-    data['normal'] = np.concatenate((data['normalVariance'], data['gradNormal']), axis=2)
-    data['depth'] = np.concatenate((data['depthVariance'], data['gradDepth']), axis=2)
-
-
-    X_diff = np.concatenate((data['diffuse'],
-                            data['normal'],
-                            data['depth'],
-                            data['gradAlbedo']), axis=2)
-
-    X_spec = np.concatenate((data['specular'],
-                            data['normal'],
-                            data['depth'],
-                            data['gradAlbedo']), axis=2)
-    
-    assert not np.isnan(X_diff).any()
-    assert not np.isnan(X_spec).any()
-    
-    data['X_diff'] = X_diff
-    data['X_spec'] = X_spec
-    
-    remove_channels(data, ('diffuseA', 'specularA', 'normalA', 'albedoA', 'depthA',
-                                'visibilityA', 'colorA', 'gradNormal', 'gradDepth', 'gradAlbedo',
-                                'gradSpecular', 'gradDiffuse', 'gradIrrad', 'albedo', 'diffuse', 
-                                'depth', 'specular', 'diffuseVariance', 'specularVariance',
-                                'depthVariance', 'visibilityVariance', 'colorVariance',
-                                'normalVariance', 'visibility'))
-    
-    return data
 
 def process_files(file, file_gt, num, patch_dir, f):
     if args.check_time:
@@ -376,9 +216,15 @@ def process_files(file, file_gt, num, patch_dir, f):
     if args.check_time:
         print('Time to get patches from one image', time.time() - prev_time)
 
-
 if __name__ == "__main__":
+    from option2 import args
+    from data import preprocess_input
+    
+    figure_num = 0
+    patch_size = args.patch_size
+    n_patches = args.n_patches
     names = []
+
     patch_dir = args.dir_patch
     image_dir = args.dir_data
 

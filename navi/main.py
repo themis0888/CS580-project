@@ -1,34 +1,20 @@
-import torch
-from torch.utils.data import DataLoader
-import data
 from option import args
 from trainer import Trainer
 from tensorboardX import SummaryWriter
-
-torch.manual_seed(args.seed)
-import pdb
-
+from data import KPCNDataset
+from torch.utils.data import DataLoader
+from download_patches import donwload_patches
+from get_patches import preprocess_input
 
 def main():
-    global model
     writer = SummaryWriter()
-    args.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    dataset = data.KPCNDataset(args)
-    loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.n_threads)
-    model = 'KPCN' # model.Model(args, checkpoint)
-    loss1 = None # loss.Loss(args, checkpoint) if not args.test_only else None
-    checkpoint = None 
-
-    kpcn_t = Trainer(args, loader, model, loss1, checkpoint, writer = writer)
-    # pdb.set_trace()
-
-    while 1:
-        # t.save_prob()
-        
-        kpcn_t.train()
-        # t.test()
-            
-        # checkpoint.done()
+    dataset = KPCNDataset()
+    loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True)
+    kpcn_t = Trainer(args, loader, writer=writer)
+    kpcn_t.train(epochs=args.epochs, learning_rate=args.lr)
+    img_num = '10499343'
+    test_data = preprocess_input('test/'+img_num+'-00128spp.exr', 'test/'+img_num+'-08192spp.exr')
+    kpcn_t.denoise(test_data, debug=True, img_num=img_num)
 
 if __name__ == '__main__':
     main()
