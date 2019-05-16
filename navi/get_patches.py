@@ -19,6 +19,7 @@ import pickle
 import os
 import sys
 from tqdm import tqdm
+import pdb
 
 
 figure_num = 0
@@ -367,16 +368,17 @@ if __name__ == "__main__":
     names = []
     patch_dir = args.dir_patch
     image_dir = args.dir_data
-    if not os.path.isdir(patch_dir):
-        os.makedir(patch_dir)
+    if not os.path.exists(patch_dir):
+        os.makedirs(patch_dir)
     if args.make_list:
         f = open(os.path.join(patch_dir,'list.txt'), 'w')
 
     # get all name of data
-    image_dir = os.path.join(image_dir, ' ')[0:-1]
-    for sample_file in tqdm(glob.glob(image_dir+'*-00128spp.exr')):
+    # pdb.set_trace()
+    #image_dir = os.path.join(image_dir, ' ')[0:-1]
+    for sample_file in tqdm(glob.glob(os.path.join(image_dir, '*/*-00128spp.exr'))):
         num = sample_file[len(image_dir):sample_file.index('-')]
-        gt_file = image_dir+'{}-08192spp.exr'.format(num)
+        gt_file = os.path.join(image_dir, '{}-08192spp.exr'.format(num))
 
         if args.check_time:
             prev_time = time.time()
@@ -386,7 +388,7 @@ if __name__ == "__main__":
 
         for i in range(len(cropped)):
             file_name = '{}_{}.pt'.format(num, i)
-            torch.save(cropped[i], os.path.join(patch_dir, file_name))
+            torch.save(cropped[i], os.path.join(patch_dir, os.path.basename(file_name)))
             if args.make_list:
                 f.write(file_name+'\n')
         if args.check_time:
