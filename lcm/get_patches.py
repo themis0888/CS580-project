@@ -230,6 +230,12 @@ if __name__ == "__main__":
 
     download = args.download_images
 
+    if not os.path.exists(patch_dir):
+        os.makedirs(patch_dir)
+    
+    if args.make_list:
+        f = open(os.path.join(patch_dir,'list.txt'), 'w')
+
     if not os.path.isdir(patch_dir):
         os.makedir(patch_dir)
     f = None

@@ -3,7 +3,7 @@ from trainer import Trainer
 from tensorboardX import SummaryWriter
 from data import KPCNDataset
 from torch.utils.data import DataLoader
-from download_patches import donwload_patches
+# from download_patches import donwload_patches
 from get_patches import preprocess_input
 
 def main():

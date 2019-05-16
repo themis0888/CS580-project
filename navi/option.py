@@ -88,7 +88,7 @@ parser.add_argument('--resume', action='store_true',
 #                     help='do test per every N batches')
 parser.add_argument('--epochs', type=int, default=200,
                     help='number of epochs to train')
-parser.add_argument('--batch_size', type=int, default=4,
+parser.add_argument('--batch_size', type=int, default=16,
                     help='input batch size for training')
 # parser.add_argument('--split_batch', type=int, default=1,
 #                     help='split the batch into smaller chunks')
