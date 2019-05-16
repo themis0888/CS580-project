@@ -146,7 +146,7 @@ class Trainer():
                 writer_LossSpec += iter_lossSpec
                 # loader_start = time.time()
 
-                if self.global_step-1 % self.print_freq ==0:
+                if (self.global_step-1) % self.print_freq == 0:
                     self.writer.add_scalars('data/LossDiff', {self.model: writer_LossDiff/self.print_freq}, self.global_step)
                     self.writer.add_scalars('data/LossSpec', {self.model: writer_LossSpec/self.print_freq}, self.global_step)
                     writer_LossDiff, writer_LossSpec = 0, 0
