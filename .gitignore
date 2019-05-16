@@ -1,7 +1,8 @@
 .vscode
 env
 *.pyc
-lcm/figure/*.png
+*.png
 *.exr
 *.npy
 *.pickle
+*.pt
