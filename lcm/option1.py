@@ -6,6 +6,8 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument('--debug', action='store_true',
                     help='Enables debug mode')
+parser.add_argument('--only_test', action='store_true',
+                    help='No train, only test')
 # parser.add_argument('--template', default='.',
 #                     help='You can set various templates in option.py')
 
@@ -26,6 +28,10 @@ parser.add_argument('--dir_train', type=str, default='train/',
                     help='train dataset directory')
 parser.add_argument('--dir_test', type=str, default='test/',
                     help='test dataset directory')
+parser.add_argument('--dir_test_proc', type=str, default='test_proc/',
+                    help='processed test dataset directory')
+parser.add_argument('--save_test_proc', action='store_true',
+                    help='Save processed test file')
 # parser.add_argument('--patch_size', type=int, default=64,
 #                     help='output patch size')
 
