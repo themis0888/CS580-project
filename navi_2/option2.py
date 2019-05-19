@@ -6,13 +6,13 @@ def to_dir_path(path):
     path = path if path[-1] == '/' else path+'/'
     return path
 
-parser.add_argument('--dir_data', '-d', type=str, default='images/',
+parser.add_argument('--dir_data', '-d', type=str, default='/home/siit/navi/data/input_data/deep_learning_denoising/renderings/',
                     help='dataset directory')
-parser.add_argument('--dir_patch', '-p', type=str, default='patches/',
+parser.add_argument('--dir_patch', '-p', type=str, default='/home/siit/navi/data/input_data/deep_learning_denoising/patches/',
                     help='patchset directory')                                                            
-parser.add_argument('--patch_size', '-s', type=int, default=64,
+parser.add_argument('--patch_size', '-s', type=int, default=100,
                     help='output patch size')
-parser.add_argument('--n_patches', '-n', type=int, default=400,
+parser.add_argument('--n_patches', '-n', type=int, default=200,
                     help='the number of pathces')
 # parser.add_argument('--debug', action='store_true',
 #                     help='Enables debug mode')
