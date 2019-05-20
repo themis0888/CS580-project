@@ -12,7 +12,7 @@ from tqdm import tqdm
 import pdb
 
 class Trainer(): 
-    def __init__(self, args, train_loader, test_loader, writer = None):
+    def __init__(self, args, train_loader, test_loader, writer=None):
         self.args = args
         self.model = args.model
         self.train_loader = train_loader
