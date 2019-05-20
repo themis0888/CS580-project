@@ -6,8 +6,6 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument('--debug', action='store_true',
                     help='Enables debug mode')
-parser.add_argument('--only_test', action='store_true',
-                    help='No train, only test')
 # parser.add_argument('--template', default='.',
 #                     help='You can set various templates in option.py')
 
@@ -26,12 +24,8 @@ parser.add_argument('--device', default='cuda',
 # Data specifications
 parser.add_argument('--dir_train', type=str, default='/home/siit/navi/data/input_data/deep_learning_denoising/patches/',
                     help='train dataset directory')
-parser.add_argument('--dir_test', type=str, default='/home/siit/navi/data/input_data/deep_learning_denoising/test/',
+parser.add_argument('--dir_test', type=str, default='/home/siit/navi/data/input_data/deep_learning_denoising/patches/',
                     help='test dataset directory')
-parser.add_argument('--save_test_proc', action='store_true',
-                    help='Save processed test file')
-parser.add_argument('--dir_test_proc', type=str, default='test_proc/',
-                    help='processed test dataset directory')
 # parser.add_argument('--patch_size', type=int, default=64,
 #                     help='output patch size')
 
@@ -94,7 +88,7 @@ parser.add_argument('--resume', action='store_true',
 #                     help='do test per every N batches')
 parser.add_argument('--epochs', type=int, default=200,
                     help='number of epochs to train')
-parser.add_argument('--batch_size', type=int, default=4,
+parser.add_argument('--batch_size', type=int, default=8,
                     help='input batch size for training')
 # parser.add_argument('--split_batch', type=int, default=1,
 #                     help='split the batch into smaller chunks')
@@ -139,11 +133,9 @@ parser.add_argument('--epsilon', type=float, default=1e-8,
 #                     help='file name to load')
 # parser.add_argument('--save_models', action='store_true',
 #                     help='save all intermediate models')
-parser.add_argument('--save_freq', type=int, default=1000,
+parser.add_argument('--save_freq', type=int, default=40,
                     help='save all intermediate models')
-parser.add_argument('--test_freq', type=int, default=10000,
-                    help='save all intermediate models')
-parser.add_argument('--print_freq', type=int, default=50,
+parser.add_argument('--print_freq', type=int, default=20,
                     help='how many batches to wait before logging training status')
 # parser.add_argument('--save_results', action='store_true',
 #                     help='save output results')
