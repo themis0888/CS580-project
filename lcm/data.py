@@ -1,4 +1,4 @@
-from option1 import args
+# from option1 import args
 
 import numpy as np
 import matplotlib
@@ -24,7 +24,7 @@ figure_num = 0
 eps = 0.00316
 
 # set device
-device = args.device
+# device = args.device
 # device = torch.device('cpu')
 # print(device)
 
@@ -180,8 +180,9 @@ def remove_channels(data, channels):
 
             
 # returns network input data from noisy .exr file
-def preprocess_input(filename, gt):
-    file = pyexr.open(filename)
+def preprocess_input(file, file_gt, is_file=False):
+    if not is_file:
+        file = pyexr.open(file)
     data = file.get_all()
 
     
@@ -189,7 +190,8 @@ def preprocess_input(filename, gt):
     for k, v in data.items():
         data[k] = np.nan_to_num(v)
         
-    file_gt = pyexr.open(gt)
+    if not is_file:
+        file_gt = pyexr.open(file_gt)
     gt_data = file_gt.get_all()
     
     # just in case

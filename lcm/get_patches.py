@@ -201,11 +201,11 @@ def importanceSampling(data, patch_size, n_patches, figure_num):
     return (pruned + pad)
 
 
-def process_files(file, file_gt, num, patch_dir, f):
-    if args.check_time:
+def process_files(file, file_gt, num, patch_dir, f, patch_size, n_patches, figure_num, check_time=False):
+    if check_time:
             prev_time = time.time()
-    data = preprocess_input(file, file_gt)
-    patches = importanceSampling(data)
+    data = preprocess_input(file, file_gt, is_file=True)
+    patches = importanceSampling(data, patch_size, n_patches, figure_num)
     cropped = list(crop(data, tuple(pos), patch_size) for pos in patches)
 
     for i in range(len(cropped)):
@@ -213,7 +213,7 @@ def process_files(file, file_gt, num, patch_dir, f):
         torch.save(cropped[i], os.path.join(patch_dir, file_name))
         if args.make_list:
             f.write(file_name+'\n')
-    if args.check_time:
+    if check_time:
         print('Time to get patches from one image', time.time() - prev_time)
 
 if __name__ == "__main__":
@@ -247,7 +247,7 @@ if __name__ == "__main__":
         external_data_loader = ExternalDataLoader(password, batch_size=4)
         for idx in tqdm(range(external_data_loader.files_amount)):
             file, file_gt, num = external_data_loader.get_data(idx)
-            process_files(file, file_gt, num, patch_dir, f)
+            process_files(file, file_gt, num, patch_dir, f, patch_size, n_patches, figure_num, check_time=args.check_time)
     else:
         # get all name of data
         image_dir = os.path.join(image_dir, ' ')[0:-1]
@@ -256,7 +256,7 @@ if __name__ == "__main__":
             gt_file = image_dir+'{}-08192spp.exr'.format(num)
             file = pyexr.open(sample_file)
             file_gt = pyexr.open(gt_file)
-            process_files(file, file_gt, num, patch_dir, f)
+            process_files(file, file_gt, num, patch_dir, f, patch_size, n_patches, figure_num, check_time=args.check_time)
   
     if args.make_list:
         f.close()
