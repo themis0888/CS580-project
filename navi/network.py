@@ -38,7 +38,7 @@ class Net(nn.Module):
         self.net = nn.Sequential(*layers)
 
     def forward(self, x):
-        x = self.net(x)
+        x = self.net(x).clamp(min=-1000, max=1000)
 
         return x 
 

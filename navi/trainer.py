@@ -41,6 +41,10 @@ class Trainer():
             print(self.specularNet, "CUDA:", next(self.specularNet.parameters()).is_cuda)
         
         criterion = nn.L1Loss()
+        optimizerDiff = optim.Adam(self.diffuseNet.parameters(), lr=learning_rate, weight_decay=1e-2)
+        # optimizerDiff = optim.SGD(self.diffuseNet.parameters(), lr=learning_rate, weight_decay=1e-4, momentum=0.8)
+        optimizerSpec = optim.Adam(self.specularNet.parameters(), lr=learning_rate, weight_decay=1e-2)
+        # optimizerSpec = optim.SGD(self.diffuseNet.parameters(), lr=learning_rate, weight_decay=1e-4, momentum=0.8)
 
         optimizerDiff = optim.Adam(self.diffuseNet.parameters(), lr=learning_rate)
         optimizerSpec = optim.Adam(self.specularNet.parameters(), lr=learning_rate)
@@ -62,7 +66,7 @@ class Trainer():
         print('Start Training')
         start = time.time()
         permutation = [0, 3, 1, 2]
-        tr_diff_best, tr_spec_best, tr_total_best = 10, 10, 10
+        tr_diff_best, tr_spec_best, tr_total_best = 1000, 1000, 1000
         # loader_start = time.time()
         for epoch in range(epochs):
             print('Epoch {:04d}'.format(epoch))
@@ -79,7 +83,13 @@ class Trainer():
                 optimizerDiff.zero_grad()
 
                 # forward + backward + optimize
-                outputDiff = self.diffuseNet(X_diff)
+                outputDiff = self.diffuseNet(X_diff)#.clamp(min=-100, max=100)
+                if torch.isinf(outputDiff).any():
+                    print("Found Infinity Values in Kernel, Going to Skip this Batch!")
+                    continue
+                if torch.isnan(outputDiff).any():
+                    print("Found NaN Values in Kernel, Going to Skip this Batch!")
+                    continue
 
                 # print(outputDiff.shape)
 
@@ -87,10 +97,32 @@ class Trainer():
                     X_input = self.crop_like(X_diff, outputDiff)
                     outputDiff = self.apply_kernel(outputDiff, X_input)
 
+                if torch.isinf(outputDiff).any():
+                    print("Found Infinity Values in Output, Going to Skip this Batch!")
+                    continue
+                if torch.isnan(outputDiff).any():
+                    print("Found NaN Values in Output, Going to Skip this Batch!")
+                    continue
+
                 Y_diff = self.crop_like(Y_diff, outputDiff)
 
-                lossDiff = criterion(outputDiff, Y_diff)
+                lossDiff = criterion(outputDiff * 255, Y_diff * 255)
+
                 lossDiff.backward()
+                # torch.nn.utils.clip_grad_norm_(self.diffuseNet.parameters(), 5)
+                torch.nn.utils.clip_grad_value_(self.diffuseNet.parameters(), 10)
+
+                # Check if gradient became NaN --> Skip            
+                found_NaN = False
+                for param in self.diffuseNet.parameters():
+                    if not torch.isnan(param.grad.data).any():
+                        continue
+                    found_NaN = True
+                    break
+                if found_NaN:
+                    print("Found NaN Values in Gradient, Goint to Skip this Batch!")
+                    continue
+
                 optimizerDiff.step()
 
                 # get the inputs
@@ -109,7 +141,7 @@ class Trainer():
 
                 Y_spec = self.crop_like(Y_spec, outputSpec)
 
-                lossSpec = criterion(outputSpec, Y_spec)
+                lossSpec = criterion(outputSpec * 255, Y_spec * 255)
                 lossSpec.backward()
                 optimizerSpec.step()
 
