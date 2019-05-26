@@ -46,9 +46,6 @@ class Trainer():
         optimizerSpec = optim.Adam(self.specularNet.parameters(), lr=learning_rate, weight_decay=1e-2)
         # optimizerSpec = optim.SGD(self.diffuseNet.parameters(), lr=learning_rate, weight_decay=1e-4, momentum=0.8)
 
-        optimizerDiff = optim.Adam(self.diffuseNet.parameters(), lr=learning_rate)
-        optimizerSpec = optim.Adam(self.specularNet.parameters(), lr=learning_rate)
-
         if self.args.resume:
             self.diffuseNet.load_state_dict(torch.load(os.path.join(self.model_dir, 'diffuseNet.pt')))
             self.specularNet.load_state_dict(torch.load(os.path.join(self.model_dir, 'specularNet.pt')))
@@ -157,32 +154,38 @@ class Trainer():
                     accuLossFinal += lossFinal.item()
 
                 iter_lossDiff, iter_lossSpec = lossDiff.item(), lossSpec.item()
+                if self.args.debug:
+                    print(iter_lossDiff)
+                    print(iter_lossSpec)
                 accuLossDiff += iter_lossDiff
                 accuLossSpec += iter_lossSpec
                 writer_LossDiff += iter_lossDiff
                 writer_LossSpec += iter_lossSpec
                 # loader_start = time.time()
 
-                if ((self.global_step-1) % self.print_freq == 0) & self.global_step > 20:
+                if ((self.global_step-1) % self.print_freq == 0) & (self.global_step > 20):
                     print_step = self.global_step // self.print_freq * self.print_freq
                     L_diff = writer_LossDiff/self.print_freq
                     L_spec = writer_LossSpec/self.print_freq
                     self.writer.add_scalars('data/LossDiff', {self.model: L_diff}, print_step)
                     self.writer.add_scalars('data/LossSpec', {self.model: L_spec}, print_step)
-                    print('[{:6d}step] L_diff: {:.3E} / L_sepc: {:.3E}'.format(print_step, L_diff, L_spec))
+                    print('[{:6d}/{:6d}] L_diff: {:.3E} / L_sepc: {:.3E}'.format(print_step, len(dataloader), L_diff, L_spec))
                     writer_LossDiff, writer_LossSpec = 0, 0
                     
                     if tr_diff_best > L_diff:
+                        print("Improved diff from {} to {}".format(tr_diff_best, L_diff))
                         tr_diff_best = L_diff
                         torch.save(self.diffuseNet.state_dict(), os.path.join(self.model_dir, 'diff_best.pt'))
                         print('Best diff_Net saved')
                     
                     if tr_spec_best > L_spec:
+                        print("Improved spec from {} to {}".format(tr_spec_best, L_spec))
                         tr_spec_best = L_spec
                         torch.save(self.specularNet.state_dict(), os.path.join(self.model_dir, 'spec_best.pt'))
                         print('Best spec_Net saved')
                     
                     if tr_total_best > L_spec + L_diff:
+                        print("Improved total from {} to {}".format(tr_total_best, L_spec + L_diff))
                         tr_total_best = L_spec + L_diff
                         torch.save(self.specularNet.state_dict(), os.path.join(self.model_dir, 'total_spec_best.pt'))
                         torch.save(self.diffuseNet.state_dict(), os.path.join(self.model_dir, 'total_diff_best.pt'))
@@ -276,18 +279,29 @@ class Trainer():
     
     def test(self):
         if self.args.only_test:
-            self.diffuseNet.load_state_dict(torch.load(os.path.join(self.model_dir, 'diffuseNet.pt')))
-            self.specularNet.load_state_dict(torch.load(os.path.join(self.model_dir, 'specularNet.pt')))
+            # Total Best
+            self.diffuseNet.load_state_dict(torch.load(os.path.join(self.model_dir, 'total_diff_best.pt')))
+            self.specularNet.load_state_dict(torch.load(os.path.join(self.model_dir, 'total_spec_best.pt')))
+            # Single Best
+            # self.diffuseNet.load_state_dict(torch.load(os.path.join(self.model_dir, 'diff_best.pt')))
+            # self.specularNet.load_state_dict(torch.load(os.path.join(self.model_dir, 'spec_best.pt')))
+            # Latest
+            # self.diffuseNet.load_state_dict(torch.load(os.path.join(self.model_dir, 'diffuseNet.pt')))
+            # self.specularNet.load_state_dict(torch.load(os.path.join(self.model_dir, 'specularNet.pt')))
 
         for i_batch, tp in enumerate(tqdm(self.test_loader)):
             img_num, test_data = tp
-            self.denoise(test_data, img_num[0])
+            self.denoise(test_data, img_num[0], self.args.debug)
 
     def denoise(self, data, img_num, debug=False):
         permutation = [0, 3, 1, 2]
         eps = 0.00316
         diffuseNet = self.diffuseNet.net
         specularNet = self.specularNet.net
+
+        if not os.path.exists('result'):
+            os.makedirs('result')
+
         with torch.no_grad():
             # pdb.set_trace()
             out_channels = diffuseNet[len(diffuseNet)-1].out_channels
@@ -302,8 +316,9 @@ class Trainer():
             data = send_to_device(to_torch_tensors(data))
             if len(data['X_diff'].size()) != 4:
                 data = self.unsqueeze_all(data)
+                 
             if debug:
-                print(data['X_diff'].size())
+                print("X_diff.size(): {}".format(data['X_diff'].size()))
             
             X_diff = data['X_diff'].permute(permutation).to(self.device)
             Y_diff = data['Reference'][:,:,:,:3].permute(permutation).to(self.device)
@@ -311,7 +326,6 @@ class Trainer():
             # forward + backward + optimize
             outputDiff = diffuseNet(X_diff)
 
-            # print(outputDiff.shape)
 
             if mode == 'KPCN':
                 X_input = self.crop_like(X_diff, outputDiff)
@@ -342,13 +356,23 @@ class Trainer():
             outputFinal = outputDiff * (albedo + eps) + torch.exp(outputSpec) - 1.0
 
             # Save result images
+            X_spec = self.crop_like(X_spec, outputSpec)
+            X_diff = self.crop_like(X_diff, outputDiff)
+            # print(X_spec.shape)
+            # save_img(X_spec.cpu().permute([0, 2, 3, 1]).numpy()[0,:], 'result/{}_X_spec.png'.format(img_num))
+            save_img(outputSpec.cpu().permute([0, 2, 3, 1]).numpy()[0,:], 'result/{}_output_spec.png'.format(img_num))
+            save_img(Y_spec.cpu().permute([0, 2, 3, 1]).numpy()[0,:], 'result/{}_Y_spec.png'.format(img_num))
+            
+            # save_img(X_diff.cpu().permute([0, 2, 3, 1]).numpy()[0,:], 'result/{}_X_diff.png'.format(img_num))
+            save_img(outputDiff.cpu().permute([0, 2, 3, 1]).numpy()[0,:], 'result/{}_output_diff.png'.format(img_num))
+            save_img(Y_diff.cpu().permute([0, 2, 3, 1]).numpy()[0,:], 'result/{}_Y_diff.png'.format(img_num))
+
             img = outputFinal.cpu().permute([0, 2, 3, 1]).numpy()[0,:]
-            if not os.path.exists('result'):
-                os.makedirs('result')
             save_img(img, 'result/{}_denoised.png'.format(img_num))
 
             Y_final = data['finalGt'].permute(permutation).to(self.device)
             Y_final = self.crop_like(Y_final, outputFinal)
+            save_img(Y_final.cpu().permute([0, 2, 3, 1]).numpy()[0,:], 'result/{}_gt.png'.format(img_num))
             
             lossFinal = criterion(outputFinal, Y_final).item()
             
