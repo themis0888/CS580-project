@@ -3,10 +3,26 @@ from trainer import Trainer
 from tensorboardX import SummaryWriter
 from data import KPCNDataset
 from torch.utils.data import DataLoader
+import shutil
+import os
 
-
+import torch
+import numpy as np
 
 def main():
+    if args.clean_up:
+        if os.path.isdir("runs/"):
+            shutil.rmtree("runs/")
+        if os.path.isdir("result/"):
+            shutil.rmtree("result/")
+
+    if args.fixed_seed != -1:
+        print("Using seed: {}".format(args.fixed_seed))
+        torch.manual_seed(args.fixed_seed)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+        np.random.seed(args.fixed_seed)
+
     writer = SummaryWriter()
     train_set = KPCNDataset()
     test_set = KPCNDataset(train=False)

@@ -10,6 +10,8 @@ parser.add_argument('--only_test', action='store_true',
                     help='No train, only test')
 # parser.add_argument('--template', default='.',
 #                     help='You can set various templates in option.py')
+parser.add_argument('--clean_up', action='store_true',
+                    help='Remove all previously runs and results')
 
 # Hardware specifications
 # parser.add_argument('--n_threads', type=int, default=0,
@@ -24,9 +26,9 @@ parser.add_argument('--device', default='cuda',
                     help='using cpu or gpu')
 
 # Data specifications
-parser.add_argument('--dir_train', type=str, default='/home/siit/navi/data/input_data/deep_learning_denoising/patches/',
+parser.add_argument('--dir_train', type=str, default='/home/ubuntu/data/train/',
                     help='train dataset directory')
-parser.add_argument('--dir_test', type=str, default='/home/siit/navi/data/input_data/deep_learning_denoising/test/',
+parser.add_argument('--dir_test', type=str, default='/home/ubuntu/data/test_patches/',
                     help='test dataset directory')
 parser.add_argument('--save_test_proc', action='store_true',
                     help='Save processed test file')
@@ -104,6 +106,8 @@ parser.add_argument('--batch_size', type=int, default=4,
 #                     help='set this option to test the model')
 # parser.add_argument('--gan_k', type=int, default=1,
 #                     help='k value for adversarial loss')
+parser.add_argument('--fixed_seed', type=int, default=-1,
+                    help='Fixed seed for reproducibility')
 
 # Optimization specifications
 parser.add_argument('--lr', type=float, default=1e-4,
