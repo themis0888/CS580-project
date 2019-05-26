@@ -37,14 +37,6 @@ $ pip3 install torchvision
 
 ## Run
 ssh into machine
-make sure to forward tensorboard port
-```
--L 16006:127.0.0.1:6006
-```
-Tensorboard will be avaiable at:
-```
-http://127.0.0.1:16006
-```
 Make sure to activate environment
 ### Creates patches
 ```
@@ -53,4 +45,16 @@ python get_patches.py --download_images
 ### Train on patches
 ```
 python main.py --batch_size 64
+```
+### With tensorboard
+make sure to forward tensorboard port
+```
+-L 16006:127.0.0.1:6006
+```
+Tensorboard will be avaiable at:
+```
+http://127.0.0.1:16006
+```
+Start it with
+```
 ```
