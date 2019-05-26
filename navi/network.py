@@ -25,7 +25,8 @@ class Net(nn.Module):
         for l in range(self.n_layers-2):
             layers += [
                     nn.Conv2d(args.nc_feats, args.nc_feats, args.kernel_size),
-                    nn.ReLU()
+                    # nn.Dropout2d(p=0.5),
+                    nn.LeakyReLU() # nn.ReLU()
             ]
             
         nc_output = 3 if self.model == 'DPCN' else args.recon_kernel_size**2
