@@ -143,6 +143,8 @@ parser.add_argument('--save_freq', type=int, default=40,
                     help='save all intermediate models')
 parser.add_argument('--print_freq', type=int, default=20,
                     help='how many batches to wait before logging training status')
+parser.add_argument('--test_freq', type=int, default=1000,
+                    help='save all intermediate models')
 # parser.add_argument('--save_results', action='store_true',
 #                     help='save output results')
 

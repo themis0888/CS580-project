@@ -10,6 +10,7 @@ import os
 import time
 from tqdm import tqdm
 import pdb
+import utils
 
 class Trainer(): 
     def __init__(self, args, train_loader, test_loader, writer = None):
@@ -35,12 +36,6 @@ class Trainer():
     def train(self, epochs=200, learning_rate=1e-4, show_images=False):
         
         dataloader = self.train_loader
-
-        # instantiate networks
-        # print('Making the Network')
-
-        # self.diffuseNet = Net(self.args).to(self.device)
-        # self.specularNet = Net(self.args).to(self.device)
 
         if self.args.debug:
             print(self.diffuseNet, "CUDA:", next(self.diffuseNet.parameters()).is_cuda)
@@ -86,17 +81,44 @@ class Trainer():
 
                 # forward + backward + optimize
                 outputDiff = self.diffuseNet(X_diff)
+                if torch.isinf(outputDiff).any():
+                    print("Found Infinity Values in Kernel, Going to Skip this Batch!")
+                    continue
+                if torch.isnan(outputDiff).any():
+                    print("Found NaN Values in Kernel, Going to Skip this Batch!")
+                    continue
 
                 # print(outputDiff.shape)
 
                 if self.model == 'KPCN':
                     X_input = self.crop_like(X_diff, outputDiff)
                     outputDiff = self.apply_kernel(outputDiff, X_input)
+                
+                if torch.isinf(outputDiff).any():
+                    print("Found Infinity Values in Output, Going to Skip this Batch!")
+                    continue
+                if torch.isnan(outputDiff).any():
+                    print("Found NaN Values in Output, Going to Skip this Batch!")
+                    continue
 
                 Y_diff = self.crop_like(Y_diff, outputDiff)
 
                 lossDiff = criterion(outputDiff, Y_diff)
                 lossDiff.backward()
+                 # torch.nn.utils.clip_grad_norm_(self.diffuseNet.parameters(), 5)
+                torch.nn.utils.clip_grad_value_(self.diffuseNet.parameters(), 10)
+
+                # Check if gradient became NaN --> Skip            
+                found_NaN = False
+                for param in self.diffuseNet.parameters():
+                    if not torch.isnan(param.grad.data).any():
+                        continue
+                    found_NaN = True
+                    break
+                if found_NaN:
+                    print("Found NaN Values in Gradient, Goint to Skip this Batch!")
+                    continue
+
                 optimizerDiff.step()
 
                 # get the inputs
@@ -154,6 +176,9 @@ class Trainer():
                 if self.global_step % self.args.save_freq == 0:
                     torch.save(self.diffuseNet.state_dict(), os.path.join(self.model_dir, 'diffuseNet.pt'))
                     torch.save(self.specularNet.state_dict(), os.path.join(self.model_dir, 'specularNet.pt'))
+                    
+                if self.global_step % self.args.test_freq == 0:
+                    self.test()
             
 
             print("Epoch {}".format(epoch + 1))
@@ -235,19 +260,21 @@ class Trainer():
         if self.args.only_test:
             self.diffuseNet.load_state_dict(torch.load(os.path.join(self.model_dir, 'diffuseNet.pt')))
             self.specularNet.load_state_dict(torch.load(os.path.join(self.model_dir, 'specularNet.pt')))
-
+        if not os.path.exists('result'):
+            os.makedirs('result')
+        dt = utils.make_folder_with_time('result')
         for i_batch, tp in enumerate(tqdm(self.test_loader)):
             img_num, test_data = tp
-            self.denoise(test_data, img_num[0])
+            self.denoise(test_data, img_num[0], dt)
 
-    def denoise(self, data, img_num, debug=False):
+    def denoise(self, data, img_num, dt, debug=False):
         permutation = [0, 3, 1, 2]
         eps = 0.00316
-        diffuseNet = self.diffuseNet.net
-        specularNet = self.specularNet.net
+        diffuseNet = self.diffuseNet
+        specularNet = self.specularNet
         with torch.no_grad():
             # pdb.set_trace()
-            out_channels = diffuseNet[len(diffuseNet)-1].out_channels
+            out_channels = diffuseNet.net[len(diffuseNet.net)-1].out_channels
             mode = 'DPCN' if out_channels == 3 else 'KPCN'
             criterion = nn.L1Loss()
             
@@ -299,10 +326,8 @@ class Trainer():
             outputFinal = outputDiff * (albedo + eps) + torch.exp(outputSpec) - 1.0
 
             # Save result images
-            img = outputFinal.cpu().permute([0, 2, 3, 1]).numpy()[0,:]
-            if not os.path.exists('result'):
-                os.makedirs('result')
-            save_img(img, 'result/{}_denoised.png'.format(img_num))
+            img = outputFinal.cpu().permute([0, 2, 3, 1]).numpy()[0,:]         
+            save_img(img, 'result/{}/{}_denoised.png'.format(dt,img_num))
 
             Y_final = data['finalGt'].permute(permutation).to(self.device)
             Y_final = self.crop_like(Y_final, outputFinal)

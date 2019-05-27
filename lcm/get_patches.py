@@ -208,12 +208,8 @@ if __name__ == "__main__":
 
     patch_dir = args.dir_patch
     image_dir = args.dir_data
-<<<<<<< HEAD
-    if not os.path.isdir(patch_dir):
-=======
 
     if not os.path.exists(patch_dir):
->>>>>>> c5fe2d2caa1e79289dfd72d25fa79a5f5915a4d5
         os.makedirs(patch_dir)
     if args.make_list:
         f = open(os.path.join(patch_dir,'list.txt'), 'w')
