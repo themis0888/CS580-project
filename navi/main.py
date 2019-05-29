@@ -23,7 +23,7 @@ def main():
         torch.backends.cudnn.benchmark = False
         np.random.seed(args.fixed_seed)
 
-    writer = SummaryWriter()
+    writer = SummaryWriter(logdir="runs/"+args.model_name)
     train_set = KPCNDataset()
     test_set = KPCNDataset(train=False)
     train_loader = DataLoader(train_set, batch_size=args.batch_size, shuffle=True)

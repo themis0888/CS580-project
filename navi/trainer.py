@@ -21,7 +21,7 @@ class Trainer():
         self.recon_kernel_size = self.args.recon_kernel_size
         self.eps = 0.00316
         self.global_step = 0
-        self.model_dir = os.path.join('model', self.args.model)
+        self.model_dir = os.path.join('model', self.args.model, self.args.model_name)
         self.print_freq = self.args.print_freq
         self.writer = writer
 

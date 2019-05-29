@@ -23,11 +23,14 @@ class Net(nn.Module):
         ]
         
         for l in range(self.n_layers-2):
-            layers += [
-                    nn.Conv2d(args.nc_feats, args.nc_feats, args.kernel_size),
-                    # nn.Dropout2d(p=0.5),
-                    nn.LeakyReLU() # nn.ReLU()
-            ]
+            layers += [nn.Conv2d(args.nc_feats, args.nc_feats, args.kernel_size)]
+            
+            if args.batch_norm:
+                layers += [nn.BatchNorm2d(args.nc_feats)]
+            if args.dropout:
+                layers += [nn.Dropout2d(p=0.5)]
+                
+            layers += [nn.LeakyReLU()]
             
         nc_output = 3 if self.model == 'DPCN' else args.recon_kernel_size**2
         layers += [nn.Conv2d(args.nc_feats, nc_output, args.kernel_size)]#, padding=18)]

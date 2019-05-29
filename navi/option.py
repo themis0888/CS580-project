@@ -28,7 +28,7 @@ parser.add_argument('--device', default='cuda',
 # Data specifications
 parser.add_argument('--dir_train', type=str, default='/home/ubuntu/data/train/',
                     help='train dataset directory')
-parser.add_argument('--dir_test', type=str, default='/home/ubuntu/data/test_patches/',
+parser.add_argument('--dir_test', type=str, default='/home/ubuntu/data/test/',
                     help='test dataset directory')
 parser.add_argument('--save_test_proc', action='store_true',
                     help='Save processed test file')
@@ -36,6 +36,8 @@ parser.add_argument('--dir_test_proc', type=str, default='test_proc/',
                     help='processed test dataset directory')
 # parser.add_argument('--patch_size', type=int, default=64,
 #                     help='output patch size')
+parser.add_argument('--model_name', type=str, default=None,
+                    help='Model Name for Log Dir')
 
 # Model specifications
 parser.add_argument('--model', default='KPCN',
@@ -71,6 +73,10 @@ parser.add_argument('--recon_kernel_size', type=int, default=21,
 #                     help='FP precision for test (single | half)')
 # parser.add_argument('--nalu', action='store_true',
 #                     help='use dilated convolution')
+parser.add_argument('--batch_norm', action='store_true',
+                    help='use batch normalization')
+parser.add_argument('--dropout', action='store_true',
+                    help='use dropout')     
 
 
 # Option for Residual dense network (RDN)
