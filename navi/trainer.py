@@ -63,7 +63,7 @@ class Trainer():
         print('Start Training')
         start = time.time()
         permutation = [0, 3, 1, 2]
-        tr_diff_best, tr_spec_best, tr_total_best = 1000, 1000, 1000
+        tr_diff_best, tr_spec_best, tr_total_best, tr_total_test_best = 1000, 1000, 1000, 1000
         # loader_start = time.time()
         for epoch in range(epochs):
             print('Epoch {:04d}'.format(epoch))
@@ -154,9 +154,9 @@ class Trainer():
                     accuLossFinal += lossFinal.item()
 
                 iter_lossDiff, iter_lossSpec = lossDiff.item(), lossSpec.item()
-                if self.args.debug:
-                    print(iter_lossDiff)
-                    print(iter_lossSpec)
+                # if self.args.debug:
+                #     print(iter_lossDiff)
+                #     print(iter_lossSpec)
                 accuLossDiff += iter_lossDiff
                 accuLossSpec += iter_lossSpec
                 writer_LossDiff += iter_lossDiff
@@ -199,7 +199,16 @@ class Trainer():
                     
 
                 if self.global_step % self.args.test_freq == 0:
-                    self.test()
+                    test_loss = self.test()
+                    print_step = self.global_step // self.print_freq * self.print_freq
+                    self.writer.add_scalars('data/LossTest', {self.model: test_loss}, print_step)
+                    print(test_loss)
+                    if tr_total_test_best > test_loss:
+                        print("Improved test from {} to {}".format(tr_total_test_best, test_loss))
+                        torch.save(self.specularNet.state_dict(), os.path.join(self.model_dir, 'total_spec_test_best.pt'))
+                        torch.save(self.diffuseNet.state_dict(), os.path.join(self.model_dir, 'total_diff_test_best.pt'))
+                        tr_total_test_best = test_loss
+
             
 
             print("Epoch {}".format(epoch + 1))
@@ -280,18 +289,24 @@ class Trainer():
     def test(self):
         if self.args.only_test:
             # Total Best
-            self.diffuseNet.load_state_dict(torch.load(os.path.join(self.model_dir, 'total_diff_best.pt')))
-            self.specularNet.load_state_dict(torch.load(os.path.join(self.model_dir, 'total_spec_best.pt')))
+            # self.diffuseNet.load_state_dict(torch.load(os.path.join(self.model_dir, 'total_diff_best.pt')))
+            # self.specularNet.load_state_dict(torch.load(os.path.join(self.model_dir, 'total_spec_best.pt')))
             # Single Best
             # self.diffuseNet.load_state_dict(torch.load(os.path.join(self.model_dir, 'diff_best.pt')))
             # self.specularNet.load_state_dict(torch.load(os.path.join(self.model_dir, 'spec_best.pt')))
             # Latest
             # self.diffuseNet.load_state_dict(torch.load(os.path.join(self.model_dir, 'diffuseNet.pt')))
             # self.specularNet.load_state_dict(torch.load(os.path.join(self.model_dir, 'specularNet.pt')))
+            # Test Best
+            self.diffuseNet.load_state_dict(torch.load(os.path.join(self.model_dir, 'total_diff_test_best.pt')))
+            self.specularNet.load_state_dict(torch.load(os.path.join(self.model_dir, 'total_spec_test_best.pt')))
 
+        test_loss = 0
         for i_batch, tp in enumerate(tqdm(self.test_loader)):
             img_num, test_data = tp
-            self.denoise(test_data, img_num[0], self.args.debug)
+            image_loss = self.denoise(test_data, img_num[0], self.args.debug)
+            test_loss += image_loss
+        return test_loss
 
     def denoise(self, data, img_num, debug=False):
         permutation = [0, 3, 1, 2]
@@ -380,3 +395,5 @@ class Trainer():
                 print("LossDiff:", lossDiff)
                 print("LossSpec:", lossSpec)
                 print("LossFinal:", lossFinal)
+
+            return lossFinal
