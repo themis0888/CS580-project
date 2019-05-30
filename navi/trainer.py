@@ -1,5 +1,6 @@
 import torch
 from network import Net
+import model.kprcan
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
@@ -20,7 +21,7 @@ class Trainer():
         self.device = args.device
         self.recon_kernel_size = self.args.recon_kernel_size
         self.eps = 0.00316
-        self.global_step = 0
+        self.global_step = 0 # args.global_step
         self.model_dir = os.path.join('model', self.args.model)
         self.print_freq = self.args.print_freq
         self.writer = writer
@@ -28,12 +29,16 @@ class Trainer():
         if not os.path.exists(self.model_dir): os.makedirs(self.model_dir)
         
         print('Making the Network')
+        if args.model == 'KPRCAN':
+            self.diffuseNet = model.kprcan.KPRCAN(self.args).to(self.device)
+            self.specularNet = model.kprcan.KPRCAN(self.args).to(self.device)
+        else:
+            self.diffuseNet = Net(self.args).to(self.device)
+            self.specularNet = Net(self.args).to(self.device)
 
-        self.diffuseNet = Net(self.args).to(self.device)
-        self.specularNet = Net(self.args).to(self.device)
-
-    def train(self, epochs=200, learning_rate=1e-4, show_images=False):
+    def train(self, epochs=200, show_images=False):
         
+        learning_rate = self.args.lr
         dataloader = self.train_loader
 
         if self.args.debug:
@@ -44,10 +49,11 @@ class Trainer():
 
         optimizerDiff = optim.Adam(self.diffuseNet.parameters(), lr=learning_rate)
         optimizerSpec = optim.Adam(self.specularNet.parameters(), lr=learning_rate)
-
+        # pdb.set_trace()
         if self.args.resume:
-            self.diffuseNet.load_state_dict(torch.load(os.path.join(self.model_dir, 'diffuseNet.pt')))
-            self.specularNet.load_state_dict(torch.load(os.path.join(self.model_dir, 'specularNet.pt')))
+            self.diffuseNet.load_state_dict(torch.load(os.path.join(self.model_dir, 'diff_best.pt')))
+            self.specularNet.load_state_dict(torch.load(os.path.join(self.model_dir, 'spec_best.pt')))
+            print('Best model downloaded')
 
         accuLossDiff = 0
         accuLossSpec = 0
@@ -62,14 +68,13 @@ class Trainer():
         print('Start Training')
         start = time.time()
         permutation = [0, 3, 1, 2]
-        tr_diff_best, tr_spec_best, tr_total_best = 10, 10, 10
+        tr_diff_best, tr_spec_best, tr_total_best, L_spec_log_best = 10, 10, 10, 1E-9
         # loader_start = time.time()
         for epoch in range(epochs):
             print('Epoch {:04d}'.format(epoch))
             for i_batch, sample_batched in enumerate(dataloader):
                 self.global_step += 1
-                
-                # loader_end = time.time()
+                loader_end = time.time()
                 
                 # get the inputs
                 X_diff = sample_batched['X_diff'].permute(permutation).to(self.device)
@@ -83,7 +88,7 @@ class Trainer():
 
                 # print(outputDiff.shape)
 
-                if self.model == 'KPCN':
+                if self.model != 'DPCN':
                     X_input = self.crop_like(X_diff, outputDiff)
                     outputDiff = self.apply_kernel(outputDiff, X_input)
 
@@ -103,16 +108,17 @@ class Trainer():
                 # forward + backward + optimize
                 outputSpec = self.specularNet(X_spec)
 
-                if self.model == 'KPCN':
+                if self.model != 'DPCN':
                     X_input = self.crop_like(X_spec, outputSpec)
                     outputSpec = self.apply_kernel(outputSpec, X_input)
-
+                
                 Y_spec = self.crop_like(Y_spec, outputSpec)
 
                 lossSpec = criterion(outputSpec, Y_spec)
+                
                 lossSpec.backward()
                 optimizerSpec.step()
-
+                
                 # calculate final ground truth error
                 with torch.no_grad():
                     albedo = sample_batched['origAlbedo'].permute(permutation).to(self.device)
@@ -123,15 +129,16 @@ class Trainer():
                     Y_final = self.crop_like(Y_final, outputFinal)
                     lossFinal = criterion(outputFinal, Y_final)
                     accuLossFinal += lossFinal.item()
-
+                    
+                # pdb.set_trace()
                 iter_lossDiff, iter_lossSpec = lossDiff.item(), lossSpec.item()
                 accuLossDiff += iter_lossDiff
                 accuLossSpec += iter_lossSpec
                 writer_LossDiff += iter_lossDiff
                 writer_LossSpec += iter_lossSpec
-                # loader_start = time.time()
-
-                if ((self.global_step-1) % self.print_freq == 0) & self.global_step > 20:
+                
+                
+                if ((self.global_step-1) % self.print_freq == 0) and (self.global_step > 5):
                     print_step = self.global_step // self.print_freq * self.print_freq
                     L_diff = writer_LossDiff/self.print_freq
                     L_spec = writer_LossSpec/self.print_freq
@@ -139,6 +146,13 @@ class Trainer():
                     self.writer.add_scalars('data/LossSpec', {self.model: L_spec}, print_step)
                     print('[{:6d}step] L_diff: {:.3E} / L_sepc: {:.3E}'.format(print_step, L_diff, L_spec))
                     writer_LossDiff, writer_LossSpec = 0, 0
+                    
+                    
+                    if L_spec_log_best > L_spec:
+                        learning_rate = learning_rate*0.2
+                        optimizerSpec = optim.Adam(self.specularNet.parameters(), lr=learning_rate)
+                        L_spec_log_best = L_spec_log_best/100
+                        print('Learning rate changed to {:.2E}'.format(learning_rate))
                     
                     if tr_diff_best > L_diff:
                         tr_diff_best = L_diff
@@ -165,6 +179,7 @@ class Trainer():
 
                 if self.global_step % self.args.test_freq == 0:
                     self.test()
+                loader_start = time.time()
             
 
             print("Epoch {}".format(epoch + 1))
