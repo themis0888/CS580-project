@@ -77,6 +77,8 @@ parser.add_argument('--batch_norm', action='store_true',
                     help='use batch normalization')
 parser.add_argument('--dropout', action='store_true',
                     help='use dropout')     
+parser.add_argument('--combined_loss', action='store_true',
+                    help='use combined loss of l1 on normal and gradient loss')  
 
 
 # Option for Residual dense network (RDN)

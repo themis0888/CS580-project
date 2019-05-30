@@ -11,6 +11,8 @@ import time
 from tqdm import tqdm
 import pdb
 
+import loss
+
 class Trainer(): 
     def __init__(self, args, train_loader, test_loader, writer = None):
         self.args = args
@@ -40,7 +42,11 @@ class Trainer():
             print(self.diffuseNet, "CUDA:", next(self.diffuseNet.parameters()).is_cuda)
             print(self.specularNet, "CUDA:", next(self.specularNet.parameters()).is_cuda)
         
-        criterion = nn.L1Loss()
+        if self.args.combined_loss:
+            criterion = loss.combined_loss()
+        else:
+            criterion = loss.l1_loss()
+        
         optimizerDiff = optim.Adam(self.diffuseNet.parameters(), lr=learning_rate)
         # optimizerDiff = optim.Adam(self.diffuseNet.parameters(), lr=learning_rate, weight_decay=1e-2)
         # optimizerDiff = optim.SGD(self.diffuseNet.parameters(), lr=learning_rate, weight_decay=1e-4, momentum=0.8)
