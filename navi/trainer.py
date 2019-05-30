@@ -41,9 +41,11 @@ class Trainer():
             print(self.specularNet, "CUDA:", next(self.specularNet.parameters()).is_cuda)
         
         criterion = nn.L1Loss()
-        optimizerDiff = optim.Adam(self.diffuseNet.parameters(), lr=learning_rate, weight_decay=1e-2)
+        optimizerDiff = optim.Adam(self.diffuseNet.parameters(), lr=learning_rate)
+        # optimizerDiff = optim.Adam(self.diffuseNet.parameters(), lr=learning_rate, weight_decay=1e-2)
         # optimizerDiff = optim.SGD(self.diffuseNet.parameters(), lr=learning_rate, weight_decay=1e-4, momentum=0.8)
-        optimizerSpec = optim.Adam(self.specularNet.parameters(), lr=learning_rate, weight_decay=1e-2)
+        optimizerSpec = optim.Adam(self.specularNet.parameters(), lr=learning_rate)
+        # optimizerSpec = optim.Adam(self.specularNet.parameters(), lr=learning_rate, weight_decay=1e-2)
         # optimizerSpec = optim.SGD(self.diffuseNet.parameters(), lr=learning_rate, weight_decay=1e-4, momentum=0.8)
 
         if self.args.resume:
