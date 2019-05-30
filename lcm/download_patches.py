@@ -4,7 +4,7 @@ import time
 import getpass
 from tqdm import tqdm
 
-def donwload_patches(remote_address, port, username, remote_path, local_path='patches/', num_patches=1000):
+def donwload_patches(remote_address, port, username, remote_path, local_path='/app/data/', num_patches=10000000):
     password = getpass.getpass("Password: ")
     # prev_time = time.time()
     ssh = paramiko.SSHClient()
@@ -32,7 +32,7 @@ def donwload_patches(remote_address, port, username, remote_path, local_path='pa
                 break
 
 if __name__ == '__main__':
-    remote_path = "/media/tlcm/main hard/patches/"
+    remote_path = "/media/tlcm/mainhard/patches/64/"
     prev_time = time.time()
     donwload_patches('125.138.77.26', port=8385, username='tlcm', remote_path=remote_path)
     print('Time:', time.time() - prev_time)

@@ -208,19 +208,17 @@ if __name__ == "__main__":
 
     patch_dir = args.dir_patch
     image_dir = args.dir_data
-<<<<<<< HEAD
-    if not os.path.isdir(patch_dir):
-=======
 
     if not os.path.exists(patch_dir):
->>>>>>> c5fe2d2caa1e79289dfd72d25fa79a5f5915a4d5
         os.makedirs(patch_dir)
     if args.make_list:
         f = open(os.path.join(patch_dir,'list.txt'), 'w')
 
     # get all name of data
+    cnt = 0
     image_dir = os.path.join(image_dir, ' ')[0:-1]
     for sample_file in tqdm(glob.glob(image_dir+'*-00128spp.exr')):
+        cnt += 1
         num = sample_file[len(image_dir):sample_file.index('-')]
         gt_file = image_dir+'{}-08192spp.exr'.format(num)
 
@@ -231,11 +229,13 @@ if __name__ == "__main__":
         cropped = list(crop(data, tuple(pos), patch_size) for pos in patches)
 
         for i in range(len(cropped)):
-            file_name = '{}_{}.pt'.format(num, i)
+            file_name = '{}_{}.pt'.format(num, i+1)
             torch.save(cropped[i], os.path.join(patch_dir, file_name))
             if args.make_list:
                 f.write(file_name+'\n')
         if args.check_time:
             print('Time to get patches from one image', time.time() - prev_time)
+        if cnt == 15:
+            break
     if args.make_list:
         f.close()
