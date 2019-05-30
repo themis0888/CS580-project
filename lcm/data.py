@@ -1,5 +1,3 @@
-from option1 import args
-
 import numpy as np
 import matplotlib
 matplotlib.use('Agg') 
@@ -24,7 +22,6 @@ figure_num = 0
 eps = 0.00316
 
 # set device
-device = args.device
 # device = torch.device('cpu')
 # print(device)
 
@@ -36,9 +33,10 @@ device = args.device
 # cropped = send_to_device(cropped)
 # It contains None data for some index because of pruning data by importance sampling
 class KPCNDataset(torch.utils.data.Dataset):
-    def __init__(self, train=True):
+    def __init__(self, args, train=True):
         # get all name of data
         self.train = train
+        self.args = args
         if train:
             self.names = glob.glob(os.path.join(args.dir_train,"*"))
             print("Train files:", len(self.names))
@@ -59,13 +57,14 @@ class KPCNDataset(torch.utils.data.Dataset):
         return len(self.names)
 
     def __getitem__(self, idx):
+        args = self.args
         if self.train:
             patch = torch.load(self.names[idx])
             # tmp = self.names[idx]
             # img_num = tmp[tmp.rindex('/')+1:tmp.index('.')]
             with open('asdf.txt', 'a') as f:
                 f.write(self.names[idx]+'\n')
-            return send_to_device(to_torch_tensors(patch))
+            return send_to_device(to_torch_tensors(patch), args.device)
         else:
             if self.ext == 'exr':
                 img_num = self.names[idx][len(args.dir_test):-13]
@@ -99,7 +98,7 @@ def to_torch_tensors(data):
         
     return data
  
-def send_to_device(data):
+def send_to_device(data, device):
     if isinstance(data, dict):
         for k, v in data.items():
             if isinstance(v, torch.Tensor):
@@ -288,7 +287,7 @@ def preprocess_input(filename, gt):
                                 'depth', 'specular', 'diffuseVariance', 'specularVariance',
                                 'depthVariance', 'visibilityVariance', 'colorVariance',
                                 'normalVariance', 'visibility'))
-    
+
     return data
 
 ###############
@@ -298,6 +297,7 @@ def preprocess_input(filename, gt):
 if __name__ == "__main__":
     from torch.utils.data import DataLoader
     from tqdm import tqdm
+    from option1 import args
 
     # test
     class Dset(torch.utils.data.Dataset):
@@ -313,7 +313,7 @@ if __name__ == "__main__":
             patch = torch.load(self.names[idx])
             tmp = self.names[idx]
             img_num = tmp[tmp.rindex('/')+1:tmp.index('.')]
-            return [img_num, send_to_device(to_torch_tensors(patch))]
+            return [img_num, send_to_device(to_torch_tensors(patch), args.device)]
 
     dset = Dset()
     dataloader = DataLoader(dset, batch_size=1, shuffle=True)
@@ -324,10 +324,13 @@ if __name__ == "__main__":
         # save_img(data['finalInput'].cpu().numpy()[0, :, :, :], 'pngs/{}_input.png'.format(img_num))
         # save_img(data['finalGt'].cpu().numpy()[0, :, :, :], 'pngs/{}_gt.png'.format(img_num))
         for key in data.keys():
-            cnt = torch.sum(torch.isinf(data[key]))
+            cnt1 = torch.sum(torch.isinf(data[key]))
+            cnt2 = torch.sum(torch.isnan(data[key]))
             # print(cnt)
-            if cnt != 0:
-                print(img_num, key, cnt)
+            if cnt1 != 0:
+                print(img_num, key, cnt1)
+            if cnt2 != 0:
+                print(img_num, key, cnt2)
 
     # dataset = KPCNDataset()
     # dataloader = torch.utils.data.DataLoader(dataset, batch_size=4,

@@ -11,6 +11,7 @@ import time
 from tqdm import tqdm
 import pdb
 import utils
+import pytorch_ssim
 
 class Trainer(): 
     def __init__(self, args, train_loader, test_loader, writer = None):
@@ -33,7 +34,7 @@ class Trainer():
         self.diffuseNet = Net(self.args).to(self.device)
         self.specularNet = Net(self.args).to(self.device)
 
-    def train(self, epochs=200, learning_rate=1e-4, show_images=False):
+    def train(self, epochs=200, learning_rate=1e-4, show_images=False, load_pretrained=False):
         
         dataloader = self.train_loader
 
@@ -42,20 +43,31 @@ class Trainer():
             print(self.specularNet, "CUDA:", next(self.specularNet.parameters()).is_cuda)
         
         criterion = nn.L1Loss()
+        # criterion = pytorch_ssim.SSIM()
 
         optimizerDiff = optim.Adam(self.diffuseNet.parameters(), lr=learning_rate)
         optimizerSpec = optim.Adam(self.specularNet.parameters(), lr=learning_rate)
+        # schedulerDiff = torch.optim.lr_scheduler.MultiStepLR(optimizerDiff, [10**4], 0.01)
+        # schedulerSpec = torch.optim.lr_scheduler.MultiStepLR(optimizerSpec, [10**4], 0.01)
 
         if self.args.resume:
             self.diffuseNet.load_state_dict(torch.load(os.path.join(self.model_dir, 'diffuseNet.pt')))
             self.specularNet.load_state_dict(torch.load(os.path.join(self.model_dir, 'specularNet.pt')))
-
-        accuLossDiff = 0
-        accuLossSpec = 0
-        accuLossFinal = 0
+        if load_pretrained:
+            print('best load')
+            self.diffuseNet.load_state_dict(torch.load(os.path.join(self.model_dir, 'fin_best_diff.pt')))
+            self.specularNet.load_state_dict(torch.load(os.path.join(self.model_dir, 'fin_best_spec.pt')))
+        # accuLossDiff = 0
+        # accuLossSpec = 0
+        # accuLossFinal = 0
         writer_LossDiff = 0
         writer_LossSpec = 0
-        
+        writer_LossFinal = 0
+        writer_SSIMDiff = 0
+        writer_SSIMSpec = 0
+        writer_SSIMFinal = 0
+        tr_fin_best = 100
+
         # lDiff = []
         # lSpec = []
         # lFinal = []
@@ -64,11 +76,16 @@ class Trainer():
         start = time.time()
         permutation = [0, 3, 1, 2]
 
+        
+
         # loader_start = time.time()
         for epoch in range(epochs):
             print('Epoch {:04d}'.format(epoch))
             for i_batch, sample_batched in enumerate(tqdm(dataloader, ncols = 80)):
                 self.global_step += 1
+                if (not load_pretrained) and self.global_step == 10**4:
+                    print('Pre-training finished')
+                    return
                 
                 # loader_end = time.time()
                 
@@ -81,12 +98,12 @@ class Trainer():
 
                 # forward + backward + optimize
                 outputDiff = self.diffuseNet(X_diff)
-                if torch.isinf(outputDiff).any():
-                    print("Found Infinity Values in Kernel, Going to Skip this Batch!")
-                    continue
-                if torch.isnan(outputDiff).any():
-                    print("Found NaN Values in Kernel, Going to Skip this Batch!")
-                    continue
+                # if torch.isinf(outputDiff).any():
+                #     print("Found Infinity Values in Kernel, Going to Skip this Batch!")
+                #     continue
+                # if torch.isnan(outputDiff).any():
+                #     print("Found NaN Values in Kernel, Going to Skip this Batch!")
+                #     continue
 
                 # print(outputDiff.shape)
 
@@ -94,30 +111,33 @@ class Trainer():
                     X_input = self.crop_like(X_diff, outputDiff)
                     outputDiff = self.apply_kernel(outputDiff, X_input)
                 
-                if torch.isinf(outputDiff).any():
-                    print("Found Infinity Values in Output, Going to Skip this Batch!")
-                    continue
-                if torch.isnan(outputDiff).any():
-                    print("Found NaN Values in Output, Going to Skip this Batch!")
-                    continue
+                # if torch.isinf(outputDiff).any():
+                #     print("Found Infinity Values in Output, Going to Skip this Batch!")
+                #     continue
+                # if torch.isnan(outputDiff).any():
+                #     print("Found NaN Values in Output, Going to Skip this Batch!")
+                #     continue
 
                 Y_diff = self.crop_like(Y_diff, outputDiff)
 
+                # lossDiff = criterion(outputDiff * 255, Y_diff * 255)
+                # lossDiff = -criterion(outputDiff, Y_diff)
                 lossDiff = criterion(outputDiff, Y_diff)
+                ssimDiff = pytorch_ssim.ssim(outputDiff, Y_diff)
                 lossDiff.backward()
                  # torch.nn.utils.clip_grad_norm_(self.diffuseNet.parameters(), 5)
-                torch.nn.utils.clip_grad_value_(self.diffuseNet.parameters(), 10)
+                # torch.nn.utils.clip_grad_value_(self.diffuseNet.parameters(), 10)
 
                 # Check if gradient became NaN --> Skip            
-                found_NaN = False
-                for param in self.diffuseNet.parameters():
-                    if not torch.isnan(param.grad.data).any():
-                        continue
-                    found_NaN = True
-                    break
-                if found_NaN:
-                    print("Found NaN Values in Gradient, Goint to Skip this Batch!")
-                    continue
+                # found_NaN = False
+                # for param in self.diffuseNet.parameters():
+                #     if not torch.isnan(param.grad.data).any():
+                #         continue
+                #     found_NaN = True
+                #     break
+                # if found_NaN:
+                #     print("Found NaN Values in Gradient, Goint to Skip this Batch!")
+                #     continue
 
                 optimizerDiff.step()
 
@@ -137,9 +157,15 @@ class Trainer():
 
                 Y_spec = self.crop_like(Y_spec, outputSpec)
 
+                # lossSpec = criterion(outputSpec * 255, Y_spec * 255)
+                # lossSpec = -criterion(outputSpec, Y_spec)
                 lossSpec = criterion(outputSpec, Y_spec)
+                ssimSpec = pytorch_ssim.ssim(outputSpec, Y_spec)
                 lossSpec.backward()
                 optimizerSpec.step()
+
+                # schedulerDiff.step()
+                # schedulerSpec.step()
 
                 # calculate final ground truth error
                 with torch.no_grad():
@@ -159,32 +185,49 @@ class Trainer():
                     Y_final = sample_batched['finalGt'].permute(permutation).to(self.device)
                     Y_final = self.crop_like(Y_final, outputFinal)
                     lossFinal = criterion(outputFinal, Y_final)
-                    accuLossFinal += lossFinal.item()
+                    ssimFinal = pytorch_ssim.ssim(outputFinal, Y_final)
+                    # accuLossFinal += lossFinal.item()
 
-                iter_lossDiff, iter_lossSpec = lossDiff.item(), lossSpec.item()
-                accuLossDiff += iter_lossDiff
-                accuLossSpec += iter_lossSpec
+                iter_lossDiff, iter_lossSpec, iter_lossFinal = lossDiff.item(), lossSpec.item(), lossFinal.item()
+                # accuLossDiff += iter_lossDiff
+                # accuLossSpec += iter_lossSpec
                 writer_LossDiff += iter_lossDiff
                 writer_LossSpec += iter_lossSpec
+                writer_LossFinal += iter_lossFinal
+                writer_SSIMDiff += 1-ssimDiff.item()
+                writer_SSIMSpec += 1-ssimSpec.item()
+                writer_SSIMFinal += 1-ssimFinal.item()
                 # loader_start = time.time()
 
                 if (self.global_step-1) % self.print_freq == 0:
                     self.writer.add_scalars('data/LossDiff', {self.model: writer_LossDiff/self.print_freq}, self.global_step)
                     self.writer.add_scalars('data/LossSpec', {self.model: writer_LossSpec/self.print_freq}, self.global_step)
-                    writer_LossDiff, writer_LossSpec = 0, 0
-                    
+                    self.writer.add_scalars('data/LossFinal', {self.model: writer_LossFinal/self.print_freq}, self.global_step)
+                    self.writer.add_scalars('data/SSIMDiff', {self.model: writer_SSIMDiff/self.print_freq}, self.global_step)
+                    self.writer.add_scalars('data/SSIMSpec', {self.model: writer_SSIMSpec/self.print_freq}, self.global_step)
+                    self.writer.add_scalars('data/SSIMFinal', {self.model: writer_SSIMFinal/self.print_freq}, self.global_step)
+                    writer_LossDiff, writer_LossSpec, writer_LossFinal = 0, 0, 0
+                    writer_SSIMDiff, writer_SSIMSpec, writer_SSIMFinal = 0, 0, 0
+
+                    if tr_fin_best > writer_LossFinal/self.print_freq:
+                        tr_fin_best = writer_LossFinal/self.print_freq
+                        torch.save(self.diffuseNet.state_dict(), os.path.join(self.model_dir, 'fin_best_diff.pt'))
+                        torch.save(self.specularNet.state_dict(), os.path.join(self.model_dir, 'fin_best_spec.pt'))
+                        
                 if self.global_step % self.args.save_freq == 0:
                     torch.save(self.diffuseNet.state_dict(), os.path.join(self.model_dir, 'diffuseNet.pt'))
                     torch.save(self.specularNet.state_dict(), os.path.join(self.model_dir, 'specularNet.pt'))
                     
                 if self.global_step % self.args.test_freq == 0:
                     self.test()
+                
+                
             
 
-            print("Epoch {}".format(epoch + 1))
-            print("LossDiff: {}".format(accuLossDiff))
-            print("LossSpec: {}".format(accuLossSpec))
-            print("LossFinal: {}".format(accuLossFinal))
+            # print("Epoch {}".format(epoch + 1))
+            # print("LossDiff: {}".format(accuLossDiff))
+            # print("LossSpec: {}".format(accuLossSpec))
+            # print("LossFinal: {}".format(accuLossFinal))
 
 
 
@@ -192,9 +235,9 @@ class Trainer():
             # lSpec.append(accuLossSpec)
             # lFinal.append(accuLossFinal)
             
-            accuLossDiff = 0
-            accuLossSpec = 0
-            accuLossFinal = 0
+            # accuLossDiff = 0
+            # accuLossSpec = 0
+            # accuLossFinal = 0
 
         print('Finished training in mode', self.model)
         print('Took', time.time() - start, 'seconds.')
@@ -277,13 +320,14 @@ class Trainer():
             out_channels = diffuseNet.net[len(diffuseNet.net)-1].out_channels
             mode = 'DPCN' if out_channels == 3 else 'KPCN'
             criterion = nn.L1Loss()
+            # criterion = pytorch_ssim.SSIM()
             
             if debug:
                 print("Out channels:", out_channels)
                 print("Detected mode", mode)
             
             # make singleton batch
-            data = send_to_device(to_torch_tensors(data))
+            data = send_to_device(to_torch_tensors(data), self.device)
             if len(data['X_diff'].size()) != 4:
                 data = self.unsqueeze_all(data)
             if debug:
@@ -319,6 +363,7 @@ class Trainer():
             Y_spec = self.crop_like(Y_spec, outputSpec)
 
             lossSpec = criterion(outputSpec, Y_spec).item()
+            
 
             # calculate final ground truth error
             albedo = data['origAlbedo'].permute(permutation).to(self.device)
@@ -327,12 +372,16 @@ class Trainer():
 
             # Save result images
             img = outputFinal.cpu().permute([0, 2, 3, 1]).numpy()[0,:]         
-            save_img(img, 'result/{}/{}_denoised.png'.format(dt,img_num))
+            # save_img(img, 'result/{}/{}_denoised.png'.format(dt,img_num))
+            self.writer.add_image('img/'+str(img_num), img, self.global_step)
 
             Y_final = data['finalGt'].permute(permutation).to(self.device)
             Y_final = self.crop_like(Y_final, outputFinal)
             
             lossFinal = criterion(outputFinal, Y_final).item()
+            self.writer.add_scalars('data/{}_diff'.format(img_num), {self.model: lossDiff}, self.global_step)
+            self.writer.add_scalars('data/{}_spec'.format(img_num), {self.model: lossSpec}, self.global_step)
+            self.writer.add_scalars('data/{}_final'.format(img_num), {self.model: lossFinal}, self.global_step)
             
             if debug:
                 print("LossDiff:", lossDiff)

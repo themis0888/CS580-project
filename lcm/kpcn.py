@@ -300,15 +300,11 @@ def preprocess_input(filename, gt, debug=False):
 	data['X_spec'] = X_spec
 	
 	remove_channels(data, ('diffuseA', 'specularA', 'normalA', 'albedoA', 'depthA',
-												 'visibilityA', 'colorA', 'gradNormal', 'gradDepth', 'gradAlbedo',
-												'gradSpecular', 'gradDiffuse', 'gradIrrad', 'albedo', 'diffuse', 
+                         'visibilityA', 'colorA', 'gradNormal', 'gradDepth', 'gradAlbedo',
                         'gradSpecular', 'gradDiffuse', 'gradIrrad', 'albedo', 'diffuse', 
-												'gradSpecular', 'gradDiffuse', 'gradIrrad', 'albedo', 'diffuse', 
-                        'gradSpecular', 'gradDiffuse', 'gradIrrad', 'albedo', 'diffuse', 
-												'gradSpecular', 'gradDiffuse', 'gradIrrad', 'albedo', 'diffuse', 
-												 'depth', 'specular', 'diffuseVariance', 'specularVariance',
-												'depthVariance', 'visibilityVariance', 'colorVariance',
-												'normalVariance', 'depth', 'visibility'))
+                         'depth', 'specular', 'diffuseVariance', 'specularVariance',
+                        'depthVariance', 'visibilityVariance', 'colorVariance',
+                        'normalVariance', 'visibility'))
 	
 	return data
 
