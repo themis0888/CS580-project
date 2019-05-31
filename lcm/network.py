@@ -38,7 +38,7 @@ class Net(nn.Module):
         self.net = nn.Sequential(*layers)
 
     def forward(self, x):
-        x = self.net(x)
+        x = self.net(x).clamp(min=-1000, max=1000)
 
         return x 
 
@@ -61,3 +61,27 @@ class Net(nn.Module):
                     raise KeyError('unexpected key "{}" in state_dict'
                                    .format(name))
 
+def make_net(args, n_layers, mode):
+	# create first layer manually
+	layers = [
+			nn.Conv2d(args.nc_input, args.nc_feats, args.kernel_size),
+			nn.ReLU()
+	]
+	
+	for l in range(n_layers-2):
+		layers += [
+				nn.Conv2d(args.nc_feats, args.nc_feats, args.kernel_size),
+				nn.ReLU()
+		]
+		
+		params = sum(p.numel() for p in layers[-2].parameters() if p.requires_grad)
+		print(params)
+		
+	nc_output = 3 if mode == 'DPCN' else args.recon_kernel_size**2
+	layers += [nn.Conv2d(args.nc_feats, nc_output, args.kernel_size)]
+	
+	for layer in layers:
+		if isinstance(layer, nn.Conv2d):
+			nn.init.xavier_uniform_(layer.weight)
+	
+	return nn.Sequential(*layers)

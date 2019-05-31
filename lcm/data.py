@@ -25,7 +25,6 @@ eps = 0.00316
 
 # set device
 # device = args.device
-# device = torch.device('cpu')
 # print(device)
 
 ############################
@@ -36,9 +35,10 @@ eps = 0.00316
 # cropped = send_to_device(cropped)
 # It contains None data for some index because of pruning data by importance sampling
 class KPCNDataset(torch.utils.data.Dataset):
-    def __init__(self, train=True):
+    def __init__(self, args, train=True):
         # get all name of data
         self.train = train
+        self.args = args
         if train:
             self.names = glob.glob(os.path.join(args.dir_train,"*"))
             print("Train files:", len(self.names))
@@ -59,9 +59,14 @@ class KPCNDataset(torch.utils.data.Dataset):
         return len(self.names)
 
     def __getitem__(self, idx):
+        args = self.args
         if self.train:
             patch = torch.load(self.names[idx])
-            return send_to_device(to_torch_tensors(patch))
+            # tmp = self.names[idx]
+            # img_num = tmp[tmp.rindex('/')+1:tmp.index('.')]
+            with open('asdf.txt', 'a') as f:
+                f.write(self.names[idx]+'\n')
+            return send_to_device(to_torch_tensors(patch), args.device)
         else:
             if self.ext == 'exr':
                 img_num = self.names[idx][len(args.dir_test):-13]
@@ -95,7 +100,7 @@ def to_torch_tensors(data):
         
     return data
  
-def send_to_device(data):
+def send_to_device(data, device):
     if isinstance(data, dict):
         for k, v in data.items():
             if isinstance(v, torch.Tensor):
@@ -124,6 +129,8 @@ def save_img(data, img_path, normalize=True):
     if normalize:
         data = np.clip(data, 0, 1)**0.45454545
     if data.dtype == 'float32':
+        if np.max(data) == np.nan or np.max(data) == 0:
+            pdb.set_trace()
         data = (data * 255 / np.max(data)).astype('uint8')
     img = Image.fromarray(data)
     img.save(img_path)
@@ -284,7 +291,7 @@ def preprocess_input(file, file_gt, is_file=False):
                                 'depth', 'specular', 'diffuseVariance', 'specularVariance',
                                 'depthVariance', 'visibilityVariance', 'colorVariance',
                                 'normalVariance', 'visibility'))
-    
+
     return data
 
 ###############
@@ -292,27 +299,64 @@ def preprocess_input(file, file_gt, is_file=False):
 ###############
 
 if __name__ == "__main__":
-    dataset = KPCNDataset()
-    dataloader = torch.utils.data.DataLoader(dataset, batch_size=4,
-                                shuffle=True, num_workers=1)
+    from torch.utils.data import DataLoader
+    from tqdm import tqdm
+    from option1 import args
 
-    for i_batch, sample_batched in enumerate(dataloader):
-        if i_batch == 2:
-            break
-        for i in range(4):
-            fig = plt.figure()
-            patch1 = sample_batched['finalInput'][i]
-            patch2 = sample_batched['finalGt'][i]
-            data1_ = np.clip(patch1, 0, 1)**0.45454545
-            data2_ = np.clip(patch2, 0, 1)**0.45454545
-            fig.add_subplot(1, 2, 1)
-            imgplot = plt.imshow(data1_)
-            imgplot.axes.get_xaxis().set_visible(False)
-            imgplot.axes.get_yaxis().set_visible(False)
-            fig.add_subplot(1, 2, 2)
-            imgplot = plt.imshow(data2_)
-            imgplot.axes.get_xaxis().set_visible(False)
-            imgplot.axes.get_yaxis().set_visible(False)            
-            fig.savefig('figure/{}_patch.png'.format(figure_num))
-            figure_num += 1
-            plt.close(fig)
+    # test
+    class Dset(torch.utils.data.Dataset):
+        def __init__(self):
+            # get all name of data
+            self.names = glob.glob(os.path.join(args.dir_train,"*"))
+            print("Train files:", len(self.names))
+
+        def __len__(self):
+            return len(self.names)
+
+        def __getitem__(self, idx):
+            patch = torch.load(self.names[idx])
+            tmp = self.names[idx]
+            img_num = tmp[tmp.rindex('/')+1:tmp.index('.')]
+            return [img_num, send_to_device(to_torch_tensors(patch), args.device)]
+
+    dset = Dset()
+    dataloader = DataLoader(dset, batch_size=1, shuffle=True)
+    for i, tp in enumerate(tqdm(dataloader)):
+        img_num = tp[0][0]
+        data = tp[1]
+        # data = data['finalInput'].cpu().numpy()[0, :, :, :]
+        # save_img(data['finalInput'].cpu().numpy()[0, :, :, :], 'pngs/{}_input.png'.format(img_num))
+        # save_img(data['finalGt'].cpu().numpy()[0, :, :, :], 'pngs/{}_gt.png'.format(img_num))
+        for key in data.keys():
+            cnt1 = torch.sum(torch.isinf(data[key]))
+            cnt2 = torch.sum(torch.isnan(data[key]))
+            # print(cnt)
+            if cnt1 != 0:
+                print(img_num, key, cnt1)
+            if cnt2 != 0:
+                print(img_num, key, cnt2)
+
+    # dataset = KPCNDataset()
+    # dataloader = torch.utils.data.DataLoader(dataset, batch_size=4,
+    #                             shuffle=True, num_workers=1)
+
+    # for i_batch, sample_batched in enumerate(dataloader):
+    #     if i_batch == 2:
+    #         break
+    #     for i in range(4):
+    #         fig = plt.figure()
+    #         patch1 = sample_batched['finalInput'][i]
+    #         patch2 = sample_batched['finalGt'][i]
+    #         data1_ = np.clip(patch1, 0, 1)**0.45454545
+    #         data2_ = np.clip(patch2, 0, 1)**0.45454545
+    #         fig.add_subplot(1, 2, 1)
+    #         imgplot = plt.imshow(data1_)
+    #         imgplot.axes.get_xaxis().set_visible(False)
+    #         imgplot.axes.get_yaxis().set_visible(False)
+    #         fig.add_subplot(1, 2, 2)
+    #         imgplot = plt.imshow(data2_)
+    #         imgplot.axes.get_xaxis().set_visible(False)
+    #         imgplot.axes.get_yaxis().set_visible(False)            
+    #         fig.savefig('figure/{}_patch.png'.format(figure_num))
+    #         figure_num += 1
+    #         plt.close(fig)

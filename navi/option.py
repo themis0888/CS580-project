@@ -45,7 +45,6 @@ parser.add_argument('--model_name', type=str, default=None,
 
 # Model specifications
 parser.add_argument('--model', default='KPCN',
-                    choices=('KPCN', 'DPCN'),
                     help='model name, KPCN(default) or DPCN')
 
 parser.add_argument('--act', type=str, default='relu',
@@ -66,8 +65,8 @@ parser.add_argument('--kernel_size', type=int, default=5,
                     help='number of kernel')
 parser.add_argument('--recon_kernel_size', type=int, default=21,
                     help='number of kernel')
-# parser.add_argument('--res_scale', type=float, default=1,
-#                     help='residual scaling')
+parser.add_argument('--res_scale', type=float, default=1,
+                    help='residual scaling')
 # parser.add_argument('--shift_mean', default=True,
 #                     help='subtract pixel mean from the input')
 # parser.add_argument('--dilation', action='store_true',
@@ -94,10 +93,10 @@ parser.add_argument('--combined_loss', action='store_true',
 #                     help='parameters config of RDN. (Use in RDN)')
 
 # Option for Residual channel attention network (RCAN)
-# parser.add_argument('--n_resgroups', type=int, default=10,
-#                     help='number of residual groups')
-# parser.add_argument('--reduction', type=int, default=16,
-#                     help='number of feature maps reduction')
+parser.add_argument('--n_resgroups', type=int, default=10,
+                    help='number of residual groups')
+parser.add_argument('--reduction', type=int, default=16,
+                    help='number of feature maps reduction')
 
 # Training specifications
 # parser.add_argument('--reset', action='store_true',
@@ -122,7 +121,7 @@ parser.add_argument('--fixed_seed', type=int, default=-1,
                     help='Fixed seed for reproducibility')
 
 # Optimization specifications
-parser.add_argument('--lr', type=float, default=1e-4,
+parser.add_argument('--lr', type=float, default=1e-5,
                     help='learning rate')
 # parser.add_argument('--decay', type=str, default='20',
 #                     help='learning rate decay type')

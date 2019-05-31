@@ -30,7 +30,7 @@ def main():
     test_loader = DataLoader(test_set, batch_size=1, shuffle=True)
     kpcn_t = Trainer(args, train_loader, test_loader, writer=writer)
     if not args.only_test:
-        kpcn_t.train(epochs=args.epochs, learning_rate=args.lr)
+        kpcn_t.train(epochs=args.epochs)
     kpcn_t.test()
 
 if __name__ == '__main__':

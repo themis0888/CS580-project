@@ -94,7 +94,7 @@ parser.add_argument('--resume', action='store_true',
 #                     help='do test per every N batches')
 parser.add_argument('--epochs', type=int, default=200,
                     help='number of epochs to train')
-parser.add_argument('--batch_size', type=int, default=4,
+parser.add_argument('--batch_size', type=int, default=5,
                     help='input batch size for training')
 # parser.add_argument('--split_batch', type=int, default=1,
 #                     help='split the batch into smaller chunks')
@@ -106,7 +106,7 @@ parser.add_argument('--batch_size', type=int, default=4,
 #                     help='k value for adversarial loss')
 
 # Optimization specifications
-parser.add_argument('--lr', type=float, default=1e-4,
+parser.add_argument('--lr', type=float, default=1e-3,
                     help='learning rate')
 # parser.add_argument('--decay', type=str, default='20',
 #                     help='learning rate decay type')
@@ -141,8 +141,10 @@ parser.add_argument('--epsilon', type=float, default=1e-8,
 #                     help='save all intermediate models')
 parser.add_argument('--save_freq', type=int, default=40,
                     help='save all intermediate models')
-parser.add_argument('--print_freq', type=int, default=20,
+parser.add_argument('--print_freq', type=int, default=100,
                     help='how many batches to wait before logging training status')
+parser.add_argument('--test_freq', type=int, default=2000,
+                    help='test frequency')
 # parser.add_argument('--save_results', action='store_true',
 #                     help='save output results')
 
