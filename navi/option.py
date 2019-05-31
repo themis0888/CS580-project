@@ -8,6 +8,8 @@ parser.add_argument('--debug', action='store_true',
                     help='Enables debug mode')
 parser.add_argument('--only_test', action='store_true',
                     help='No train, only test')
+parser.add_argument('--exr_test', action='store_true',
+                    help='Test on exr')
 # parser.add_argument('--template', default='.',
 #                     help='You can set various templates in option.py')
 parser.add_argument('--clean_up', action='store_true',
@@ -29,6 +31,8 @@ parser.add_argument('--device', default='cuda',
 parser.add_argument('--dir_train', type=str, default='/home/ubuntu/data/train/',
                     help='train dataset directory')
 parser.add_argument('--dir_test', type=str, default='/home/ubuntu/data/test/',
+                    help='test dataset directory')
+parser.add_argument('--dir_test_exr', type=str, default='/home/ubuntu/data/exr/',
                     help='test dataset directory')
 parser.add_argument('--save_test_proc', action='store_true',
                     help='Save processed test file')
@@ -176,3 +180,6 @@ for arg in vars(args):
 
 args.device = args.device if torch.cuda.is_available() else 'cpu'
 print("Device: ", args.device)
+
+if args.exr_test:
+    args.dir_test = args.dir_test_exr

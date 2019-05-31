@@ -36,7 +36,7 @@ device = args.device
 # cropped = send_to_device(cropped)
 # It contains None data for some index because of pruning data by importance sampling
 class KPCNDataset(torch.utils.data.Dataset):
-    def __init__(self, train=True):
+    def __init__(self, train=True, exr=False):
         # get all name of data
         self.train = train
         if train:
@@ -47,13 +47,12 @@ class KPCNDataset(torch.utils.data.Dataset):
             self.ext = tmp[tmp.rindex('.')+1:]
             if self.ext == 'exr':
                 self.names = glob.glob(os.path.join(args.dir_test, "*-00128spp.exr"))
-                print("Test pairs:", len(self.names))
             elif self.ext == 'pt':
                 self.names = glob.glob(os.path.join(args.dir_test, "*"))
-                print("Test pairs:", len(self.names))
             else:
                 raise TypeError('Not exr or pt file')
-        
+            print("Test pairs:", len(self.names))
+
 
     def __len__(self):
         return len(self.names)
