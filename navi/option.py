@@ -105,7 +105,7 @@ parser.add_argument('--batch_size', type=int, default=4,
 #                     help='k value for adversarial loss')
 
 # Optimization specifications
-parser.add_argument('--lr', type=float, default=1e-5,
+parser.add_argument('--lr', type=float, default=1e-7,
                     help='learning rate')
 # parser.add_argument('--decay', type=str, default='20',
 #                     help='learning rate decay type')
@@ -140,9 +140,11 @@ parser.add_argument('--dir_save', type=str, default='test',
 #                     help='save all intermediate models')
 parser.add_argument('--save_freq', type=int, default=1000,
                     help='save all intermediate models')
-parser.add_argument('--test_freq', type=int, default=10000,
+parser.add_argument('--test_freq', type=int, default=5000,
                     help='save all intermediate models')
 parser.add_argument('--print_freq', type=int, default=100,
+                    help='how many batches to wait before logging training status')
+parser.add_argument('--visualize_freq', type=int, default=500,
                     help='how many batches to wait before logging training status')
 # parser.add_argument('--save_results', action='store_true',
 #                     help='save output results')
