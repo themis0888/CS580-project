@@ -10,7 +10,8 @@ from data import send_to_device, to_torch_tensors, show_data, save_img
 import os
 import time
 from tqdm import tqdm
-import pdb
+import utility
+import ipdb
 
 class Trainer(): 
     def __init__(self, args, train_loader, test_loader, writer = None):
@@ -22,7 +23,7 @@ class Trainer():
         self.recon_kernel_size = self.args.recon_kernel_size
         self.eps = 0.00316
         self.global_step = 0 # args.global_step
-        self.model_dir = os.path.join('model', self.args.model)
+        self.model_dir = os.path.join('exp', self.args.dir_save, 'model', self.args.model)
         self.print_freq = self.args.print_freq
         self.writer = writer
 
@@ -37,7 +38,10 @@ class Trainer():
             self.specularNet = Net(self.args).to(self.device)
 
     def train(self, epochs=200, show_images=False):
-        
+        if self.global_step < 1000: self.print_freq = 20
+        else: self.print_freq = 100
+
+
         learning_rate = self.args.lr
         dataloader = self.train_loader
 
@@ -68,7 +72,7 @@ class Trainer():
         print('Start Training')
         start = time.time()
         permutation = [0, 3, 1, 2]
-        tr_diff_best, tr_spec_best, tr_total_best, L_spec_log_best = 10, 10, 10, 1E-9
+        tr_diff_best, tr_spec_best, tr_total_best, L_spec_log_best = 100, 10, 10, 1E-9
         # loader_start = time.time()
         for epoch in range(epochs):
             print('Epoch {:04d}'.format(epoch))
@@ -94,7 +98,7 @@ class Trainer():
 
                 Y_diff = self.crop_like(Y_diff, outputDiff)
 
-                lossDiff = criterion(outputDiff, Y_diff)
+                lossDiff = criterion(outputDiff * 255, Y_diff*255)
                 lossDiff.backward()
                 optimizerDiff.step()
 
@@ -258,13 +262,20 @@ class Trainer():
         return d
     
     def test(self):
-        if self.args.only_test:
-            self.diffuseNet.load_state_dict(torch.load(os.path.join(self.model_dir, 'diffuseNet.pt')))
-            self.specularNet.load_state_dict(torch.load(os.path.join(self.model_dir, 'specularNet.pt')))
-
+        if self.args.test_only:
+            self.diffuseNet.load_state_dict(torch.load(os.path.join(self.model_dir, 'diff_best.pt')))
+            self.specularNet.load_state_dict(torch.load(os.path.join(self.model_dir, 'spec_best.pt')))
+        psnrs = 0
         for i_batch, tp in enumerate(tqdm(self.test_loader)):
+            # ipdb.set_trace()
             img_num, test_data = tp
-            self.denoise(test_data, img_num[0])
+            losses = self.denoise(test_data, img_num[0])
+            psnrs.append(losses[-1])
+        
+        avg_psnr = sum(psnrs)/len(psnrs)
+        print('Avg. PSNR: {}'.format(avg_psnr))
+        self.writer.add_scalars('data/test_PSNR', {self.model: avg_psnr}, self.global_step)
+
 
     def denoise(self, data, img_num, debug=False):
         permutation = [0, 3, 1, 2]
@@ -339,3 +350,9 @@ class Trainer():
                 print("LossDiff:", lossDiff)
                 print("LossSpec:", lossSpec)
                 print("LossFinal:", lossFinal)
+            
+            ipdb.set_trace()
+            psnr = utility.calc_psnr(outputFinal*255, Y_final*255)
+            losses = [lossDiff, lossSpec, lossFinal, psnr]
+
+            return losses

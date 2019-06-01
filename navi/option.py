@@ -6,7 +6,7 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument('--debug', action='store_true',
                     help='Enables debug mode')
-parser.add_argument('--only_test', action='store_true',
+parser.add_argument('--test_only', action='store_true',
                     help='No train, only test')
 # parser.add_argument('--template', default='.',
 #                     help='You can set various templates in option.py')
@@ -132,8 +132,8 @@ parser.add_argument('--epsilon', type=float, default=1e-8,
 #                     help='skipping batch that has large error')
 
 # Log specifications
-# parser.add_argument('--save', type=str, default='test',
-#                     help='file name to save')
+parser.add_argument('--dir_save', type=str, default='test',
+                    help='file name to save')
 # parser.add_argument('--load', type=str, default='',
 #                     help='file name to load')
 # parser.add_argument('--save_models', action='store_true',
@@ -142,7 +142,7 @@ parser.add_argument('--save_freq', type=int, default=1000,
                     help='save all intermediate models')
 parser.add_argument('--test_freq', type=int, default=10000,
                     help='save all intermediate models')
-parser.add_argument('--print_freq', type=int, default=20,
+parser.add_argument('--print_freq', type=int, default=100,
                     help='how many batches to wait before logging training status')
 # parser.add_argument('--save_results', action='store_true',
 #                     help='save output results')
