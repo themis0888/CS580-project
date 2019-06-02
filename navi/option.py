@@ -1,12 +1,13 @@
 import argparse
 import torch
 # import template
+import datetime as dt
 
 parser = argparse.ArgumentParser()
 
 parser.add_argument('--debug', action='store_true',
                     help='Enables debug mode')
-parser.add_argument('--only_test', action='store_true',
+parser.add_argument('--test_only', action='store_true',
                     help='No train, only test')
 parser.add_argument('--exr_test', action='store_true',
                     help='Test on exr')
@@ -65,7 +66,7 @@ parser.add_argument('--kernel_size', type=int, default=5,
                     help='number of kernel')
 parser.add_argument('--recon_kernel_size', type=int, default=21,
                     help='number of kernel')
-parser.add_argument('--res_scale', type=float, default=1,
+parser.add_argument('--res_scale', type=float, default=0.1,
                     help='residual scaling')
 # parser.add_argument('--shift_mean', default=True,
 #                     help='subtract pixel mean from the input')
@@ -82,6 +83,8 @@ parser.add_argument('--dropout', action='store_true',
                     help='use dropout')     
 parser.add_argument('--combined_loss', action='store_true',
                     help='use combined loss of l1 on normal and gradient loss')  
+parser.add_argument('--nalu', action='store_true',
+                    help='use dilated convolution')
 
 
 # Option for Residual dense network (RDN)
@@ -121,7 +124,7 @@ parser.add_argument('--fixed_seed', type=int, default=-1,
                     help='Fixed seed for reproducibility')
 
 # Optimization specifications
-parser.add_argument('--lr', type=float, default=1e-5,
+parser.add_argument('--lr', type=float, default=1e-6,
                     help='learning rate')
 # parser.add_argument('--decay', type=str, default='20',
 #                     help='learning rate decay type')
@@ -148,8 +151,8 @@ parser.add_argument('--epsilon', type=float, default=1e-8,
 #                     help='skipping batch that has large error')
 
 # Log specifications
-# parser.add_argument('--save', type=str, default='test',
-#                     help='file name to save')
+parser.add_argument('--dir_save', type=str, default='exp',
+                    help='file name to save')
 # parser.add_argument('--load', type=str, default='',
 #                     help='file name to load')
 # parser.add_argument('--save_models', action='store_true',
@@ -159,6 +162,8 @@ parser.add_argument('--save_freq', type=int, default=100,
 parser.add_argument('--test_freq', type=int, default=100,
                     help='save all intermediate models')
 parser.add_argument('--print_freq', type=int, default=100,
+                    help='how many batches to wait before logging training status')
+parser.add_argument('--visualize_freq', type=int, default=400,
                     help='how many batches to wait before logging training status')
 # parser.add_argument('--save_results', action='store_true',
 #                     help='save output results')
@@ -182,3 +187,7 @@ print("Device: ", args.device)
 
 if args.exr_test:
     args.dir_test = args.dir_test_exr
+
+now = dt.datetime.now()
+date_time = now.strftime('%Y-%m-%d/%H-%M')
+args.date_time = date_time

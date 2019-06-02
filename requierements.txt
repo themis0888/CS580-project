@@ -3,6 +3,11 @@ pyexr
 matplotlib
 scipy
 tqdm
-tensorboardX
+tensorboardX==1.6
 tensorboard
 tensorflow
+imageio
+pandas
+seaborn
+opencv-python
+ipdb
