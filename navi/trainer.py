@@ -6,6 +6,7 @@ CUDA_VISIBLE_DEVICES=2 python main.py --model KPCN --dir_save debug --test_freq 
 import torch
 from network import Net
 import model.kprcan
+import model.kprcn
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
@@ -43,6 +44,9 @@ class Trainer():
         if args.model == 'KPRCAN':
             self.diffuseNet = model.kprcan.KPRCAN(self.args).to(self.device)
             self.specularNet = model.kprcan.KPRCAN(self.args).to(self.device)
+        elif args.model == 'KPRCN':
+            self.diffuseNet = model.kprcn.KPRCN(self.args).to(self.device)
+            self.specularNet = model.kprcn.KPRCN(self.args).to(self.device)
         else:
             self.diffuseNet = Net(self.args).to(self.device)
             self.specularNet = Net(self.args).to(self.device)
@@ -59,7 +63,7 @@ class Trainer():
         criterion = nn.L1Loss()
 
         optimizerDiff = optim.Adam(self.diffuseNet.parameters(), lr=learning_rate)
-        optimizerSpec = optim.Adam(self.specularNet.parameters(), lr=learning_rate)
+        optimizerSpec = optim.Adam(self.specularNet.parameters(), lr=learning_rate/10)
         # pdb.set_trace()
         if self.args.resume:
             self.diffuseNet.load_state_dict(torch.load(os.path.join(self.model_dir, 'diff_best.pt')))
@@ -84,17 +88,18 @@ class Trainer():
         # loader_start = time.time()
         phase = 1
         self.print_freq = self.args.print_freq // 4
-        self.test_freq = self.args.test_freq // 4
+        self.test_freq = self.args.print_freq
         for epoch in range(epochs):
             print('Epoch {:04d}'.format(epoch))
             for i_batch, sample_batched in enumerate(dataloader):
 
-                if (self.global_step > 1000) and (phase == 1): 
+                if (self.global_step > self.args.print_freq * 10) and (phase == 1): 
                     phase = 2
                     self.print_freq = self.args.print_freq
                     self.test_freq = self.args.test_freq
                     optimizerDiff = optim.Adam(self.diffuseNet.parameters(), lr=learning_rate/5)
-                    optimizerSpec = optim.Adam(self.specularNet.parameters(), lr=learning_rate/5)
+                    optimizerSpec = optim.Adam(self.specularNet.parameters(), lr=learning_rate/500)
+                    print('Learning Rate Changed to {:.4E}'.format(learning_rate/5))
                 
                 self.global_step += 1
                 loader_end = time.time()
@@ -117,7 +122,7 @@ class Trainer():
 
                 Y_diff = self.crop_like(Y_diff, outputDiff)
 
-                lossDiff = criterion(outputDiff * 255, Y_diff*255)
+                lossDiff = criterion(outputDiff, Y_diff)
                 lossDiff.backward()
                 optimizerDiff.step()
 
@@ -176,10 +181,10 @@ class Trainer():
                     gt_data = torch.clamp(vutils.make_grid(Y_final, normalize = True, scale_each=True), 0, 1)**0.454545
                     cat = torch.cat((in_data.unsqueeze(0), out_data.unsqueeze(0), gt_data.unsqueeze(0)), dim=0)
                     total = vutils.make_grid(cat, normalize = True, scale_each=True, nrow = 1)
-                    # self.writer.add_image('data/Training/Total Summary', total, print_step)
+                    self.writer.add_image('data/Training/Total Summary', total, print_step)
                     # self.writer.add_image('data/Training/Input data', in_data, print_step)
                     # self.writer.add_image('data/Training/Out data', out_data, print_step)
-                    self.writer.add_image('data/Training/Target data', gt_data, print_step)
+                    # self.writer.add_image('data/Training/Target data', gt_data, print_step)
 
 
                 if ((self.global_step) % self.print_freq == 0) and (self.global_step > 5):
@@ -193,7 +198,7 @@ class Trainer():
                     self.writer.add_scalars('data/Train/LossDiff', {self.model: L_diff}, print_step)
                     self.writer.add_scalars('data/Train/LossSpec', {self.model: L_spec}, print_step)
                     self.writer.add_scalars('data/Train/PSNR', {self.model: L_psnr}, print_step)
-                    print('[{:6d}step] L_diff: {:.3E} \t L_sepc: {:.3E} \t PSNR: {:.1E}'.format(print_step, L_diff, L_spec, L_psnr))
+                    print('[{:6d}step] L_diff: {:.3E} \t L_sepc: {:.3E} \t PSNR: {:.2f}'.format(print_step, L_diff, L_spec, L_psnr))
                     writer_LossDiff, writer_LossSpec, writer_psnr = [], [], []
                     
                     
@@ -226,7 +231,7 @@ class Trainer():
                     print('Latest Model saved')
                     
 
-                if self.global_step % self.args.test_freq == 0:
+                if (self.global_step-1) % self.args.test_freq == 0:
                     self.test()
                 loader_start = time.time()
             
@@ -328,8 +333,8 @@ class Trainer():
         # self.writer.add_image('data/Test/Target', gt_data, self.global_step)
         self.writer.add_image('data/Test/Total Summary', total, self.global_step)
         avg_psnr = sum(psnrs)/len(psnrs)
-        print('Avg. PSNR: {}'.format(avg_psnr))
-        self.writer.add_scalars('data/test_PSNR', {self.model: avg_psnr}, self.global_step)
+        print('Avg. PSNR: {:.3f}'.format(avg_psnr))
+        self.writer.add_scalars('data/Test/PSNR', {self.model: avg_psnr}, self.global_step)
 
 
     def denoise(self, data, img_num, debug=False):

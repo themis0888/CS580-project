@@ -4,13 +4,18 @@ from tensorboardX import SummaryWriter
 from data import KPCNDataset
 from torch.utils.data import DataLoader
 import os
+import datetime as dt
 
 
 
 def main():
-    log_dir = os.path.join('exp', args.dir_save, args.model)
-    if not os.path.exists(log_dir): os.makedirs(log_dir)
-    writer = SummaryWriter(log_dir = log_dir)
+    now = dt.datetime.now()
+    date_time = now.strftime('%Y-%m-%d/%H-%M')
+    args.date_time = date_time
+
+    args.log_dir = os.path.join('exp', args.dir_save, args.model, args.date_time)
+    if not os.path.exists(args.log_dir): os.makedirs(args.log_dir)
+    writer = SummaryWriter(log_dir = args.log_dir)
 
     train_set = KPCNDataset()
     test_set = KPCNDataset(train=False)

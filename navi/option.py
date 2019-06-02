@@ -57,7 +57,7 @@ parser.add_argument('--kernel_size', type=int, default=5,
                     help='number of kernel')
 parser.add_argument('--recon_kernel_size', type=int, default=21,
                     help='number of kernel')
-parser.add_argument('--res_scale', type=float, default=1,
+parser.add_argument('--res_scale', type=float, default=0.1,
                     help='residual scaling')
 # parser.add_argument('--shift_mean', default=True,
 #                     help='subtract pixel mean from the input')
@@ -66,8 +66,8 @@ parser.add_argument('--res_scale', type=float, default=1,
 # parser.add_argument('--precision', type=str, default='single',
 #                     choices=('single', 'half'),
 #                     help='FP precision for test (single | half)')
-# parser.add_argument('--nalu', action='store_true',
-#                     help='use dilated convolution')
+parser.add_argument('--nalu', action='store_true',
+                    help='use dilated convolution')
 
 
 # Option for Residual dense network (RDN)
@@ -105,7 +105,7 @@ parser.add_argument('--batch_size', type=int, default=4,
 #                     help='k value for adversarial loss')
 
 # Optimization specifications
-parser.add_argument('--lr', type=float, default=1e-7,
+parser.add_argument('--lr', type=float, default=1e-6,
                     help='learning rate')
 # parser.add_argument('--decay', type=str, default='20',
 #                     help='learning rate decay type')
@@ -140,11 +140,11 @@ parser.add_argument('--dir_save', type=str, default='test',
 #                     help='save all intermediate models')
 parser.add_argument('--save_freq', type=int, default=1000,
                     help='save all intermediate models')
-parser.add_argument('--test_freq', type=int, default=5000,
+parser.add_argument('--test_freq', type=int, default=1000,
                     help='save all intermediate models')
-parser.add_argument('--print_freq', type=int, default=100,
+parser.add_argument('--print_freq', type=int, default=200,
                     help='how many batches to wait before logging training status')
-parser.add_argument('--visualize_freq', type=int, default=500,
+parser.add_argument('--visualize_freq', type=int, default=400,
                     help='how many batches to wait before logging training status')
 # parser.add_argument('--save_results', action='store_true',
 #                     help='save output results')
