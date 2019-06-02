@@ -57,7 +57,7 @@ parser.add_argument('--kernel_size', type=int, default=5,
                     help='number of kernel')
 parser.add_argument('--recon_kernel_size', type=int, default=21,
                     help='number of kernel')
-parser.add_argument('--res_scale', type=float, default=0.1,
+parser.add_argument('--res_scale', type=float, default=1,
                     help='residual scaling')
 # parser.add_argument('--shift_mean', default=True,
 #                     help='subtract pixel mean from the input')
@@ -105,10 +105,12 @@ parser.add_argument('--batch_size', type=int, default=4,
 #                     help='k value for adversarial loss')
 
 # Optimization specifications
-parser.add_argument('--lr', type=float, default=1e-6,
+parser.add_argument('--lr', type=float, default=1e-4,
                     help='learning rate')
 # parser.add_argument('--decay', type=str, default='20',
 #                     help='learning rate decay type')
+parser.add_argument('--global_step', type=int, default=1,
+                    help='global_step')
 # parser.add_argument('--gamma', type=float, default=0.5,
 #                     help='learning rate decay factor for step decay')
 parser.add_argument('--optimizer', default='ADAM',

@@ -31,7 +31,8 @@ class Trainer():
         self.device = args.device
         self.recon_kernel_size = self.args.recon_kernel_size
         self.eps = 0.00316
-        self.global_step = 1 # args.global_step
+        if self.args.resume: self.global_step = self.args.global_step
+        else: self.global_step = 1 # args.global_step
         self.log_dir = os.path.join('exp', self.args.dir_save)
         self.model_dir = os.path.join(self.log_dir, 'model', self.args.model)
         self.print_freq = self.args.print_freq
@@ -313,7 +314,7 @@ class Trainer():
     
     
     def test(self):
-        if self.args.test_only:
+        if self.args.test_only and self.args.model != 'BM3D':
             self.diffuseNet.load_state_dict(torch.load(os.path.join(self.model_dir, 'diff_best.pt')))
             self.specularNet.load_state_dict(torch.load(os.path.join(self.model_dir, 'spec_best.pt')))
         psnrs = []
@@ -343,6 +344,32 @@ class Trainer():
         diffuseNet = self.diffuseNet
 
         specularNet = self.specularNet
+        # ipdb.set_trace()
+        if self.args.model == 'BM3D':
+            
+            Y_final = data['finalGt'].permute(permutation).to(self.device)
+            # Y_final = self.crop_like(Y_final, outputFinal)
+
+            X_fin_input = data['finalInput'].permute(permutation).to(self.device)
+            # X_fin_input = self.crop_like(X_fin_input, Y_final)
+            
+            in_data = np.array((torch.clamp(X_fin_input, 0, 1)**0.454545).permute([0,2,3,1])[0].cpu().numpy()*255, dtype = np.uint8)
+            out_data = cv2.fastNlMeansDenoisingColored(in_data, None, 10, 10, 7, 21)
+            cv2.imwrite('output/BM3D_{}.png'.format(img_num), out_data)
+            gt_data = np.array((torch.clamp(Y_final, 0, 1)**0.454545).permute([0,2,3,1])[0].cpu().numpy()*255, dtype = np.uint8)
+            in_data = torch.tensor(in_data, dtype=torch.float32).permute([2,0,1]).unsqueeze(0)
+            out_data = torch.tensor(out_data, dtype=torch.float32).permute([2,0,1]).unsqueeze(0)
+            gt_data = torch.tensor(gt_data, dtype=torch.float32).permute([2,0,1]).unsqueeze(0)
+            
+            psnr = utility.calc_psnr(out_data, gt_data)
+            # ipdb.set_trace()
+
+            losses = [1,1,1, psnr]
+            result = [in_data[0], out_data[0], gt_data[0]]
+
+            return losses, result
+
+
         with torch.no_grad():
             # pdb.set_trace()
             out_channels = diffuseNet.nc_output
