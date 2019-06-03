@@ -44,3 +44,8 @@ def calc_psnr(output, target, rgb_range = 255):
     mse = valid.pow(2).mean()
 
     return -10 * math.log10(mse)
+
+
+def visualize_img(img):
+    return np.clip(img, 0, 1)**0.454545 * 255
+    

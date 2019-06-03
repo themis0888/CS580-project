@@ -6,7 +6,7 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument('--debug', action='store_true',
                     help='Enables debug mode')
-parser.add_argument('--only_test', action='store_true',
+parser.add_argument('--test_only', action='store_true',
                     help='No train, only test')
 # parser.add_argument('--template', default='.',
 #                     help='You can set various templates in option.py')
@@ -66,8 +66,8 @@ parser.add_argument('--res_scale', type=float, default=1,
 # parser.add_argument('--precision', type=str, default='single',
 #                     choices=('single', 'half'),
 #                     help='FP precision for test (single | half)')
-# parser.add_argument('--nalu', action='store_true',
-#                     help='use dilated convolution')
+parser.add_argument('--nalu', action='store_true',
+                    help='use dilated convolution')
 
 
 # Option for Residual dense network (RDN)
@@ -105,10 +105,12 @@ parser.add_argument('--batch_size', type=int, default=4,
 #                     help='k value for adversarial loss')
 
 # Optimization specifications
-parser.add_argument('--lr', type=float, default=1e-5,
+parser.add_argument('--lr', type=float, default=1e-4,
                     help='learning rate')
 # parser.add_argument('--decay', type=str, default='20',
 #                     help='learning rate decay type')
+parser.add_argument('--global_step', type=int, default=1,
+                    help='global_step')
 # parser.add_argument('--gamma', type=float, default=0.5,
 #                     help='learning rate decay factor for step decay')
 parser.add_argument('--optimizer', default='ADAM',
@@ -132,17 +134,19 @@ parser.add_argument('--epsilon', type=float, default=1e-8,
 #                     help='skipping batch that has large error')
 
 # Log specifications
-# parser.add_argument('--save', type=str, default='test',
-#                     help='file name to save')
+parser.add_argument('--dir_save', type=str, default='test',
+                    help='file name to save')
 # parser.add_argument('--load', type=str, default='',
 #                     help='file name to load')
 # parser.add_argument('--save_models', action='store_true',
 #                     help='save all intermediate models')
 parser.add_argument('--save_freq', type=int, default=1000,
                     help='save all intermediate models')
-parser.add_argument('--test_freq', type=int, default=10000,
+parser.add_argument('--test_freq', type=int, default=1000,
                     help='save all intermediate models')
-parser.add_argument('--print_freq', type=int, default=20,
+parser.add_argument('--print_freq', type=int, default=200,
+                    help='how many batches to wait before logging training status')
+parser.add_argument('--visualize_freq', type=int, default=400,
                     help='how many batches to wait before logging training status')
 # parser.add_argument('--save_results', action='store_true',
 #                     help='save output results')

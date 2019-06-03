@@ -28,8 +28,8 @@ class Net(nn.Module):
                     nn.ReLU()
             ]
             
-        nc_output = 3 if self.model == 'DPCN' else args.recon_kernel_size**2
-        layers += [nn.Conv2d(args.nc_feats, nc_output, args.kernel_size)]#, padding=18)]
+        self.nc_output = 3 if self.model == 'DPCN' else args.recon_kernel_size**2
+        layers += [nn.Conv2d(args.nc_feats, self.nc_output, args.kernel_size)]#, padding=18)]
         
         for layer in layers:
             if isinstance(layer, nn.Conv2d):
