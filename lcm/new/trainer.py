@@ -31,34 +31,38 @@ class Trainer():
         if not os.path.exists(self.model_dir): os.makedirs(self.model_dir)
         
         print('Making the Network')
-
-        self.diffuseNet = Net(self.args).to(self.device)
+        self.diffuseNetList = [Net(self.args).to(self.device)]*5
+        # self.diffuseNet = Net(self.args).to(self.device)
         self.specularNet = Net(self.args).to(self.device)
 
     def train(self, epochs=200, learning_rate=1e-4, show_images=False):
         
         dataloader = self.train_loader
 
-        if self.args.debug:
-            print(self.diffuseNet, "CUDA:", next(self.diffuseNet.parameters()).is_cuda)
-            print(self.specularNet, "CUDA:", next(self.specularNet.parameters()).is_cuda)
+        # if self.args.debug:
+        #     print(self.diffuseNet, "CUDA:", next(self.diffuseNet.parameters()).is_cuda)
+        #     print(self.specularNet, "CUDA:", next(self.specularNet.parameters()).is_cuda)
         
         criterion = nn.L1Loss()
         # criterion = pytorch_ssim.SSIM()
 
-        optimizerDiff = optim.Adam(self.diffuseNet.parameters(), lr=learning_rate)
+        optimizerDiffList = []
+        for i in range(len(self.diffuseNetList)):
+            optimizerDiffList.append(optim.Adam(self.diffuseNetList[i].parameters(), lr=learning_rate))
+        # optimizerDiff = optim.Adam(self.diffuseNet.parameters(), lr=learning_rate)
         optimizerSpec = optim.Adam(self.specularNet.parameters(), lr=learning_rate)
-        schedulerDiff = torch.optim.lr_scheduler.MultiStepLR(optimizerDiff, [10**4], gamma=0.01)
+        schedulerDiffList = []
+        for i in range(len(optimizerDiffList)):
+            schedulerDiffList.append(torch.optim.lr_scheduler.MultiStepLR(schedulerDiffList[i], [10**4], gamma=0.01))
         schedulerSpec = torch.optim.lr_scheduler.MultiStepLR(optimizerSpec, [10**4], gamma=0.01)
         # schedulerDiff = torch.optim.lr_scheduler.StepLR(optimizerDiff, step_size=10**4, gamma=0.1)
         # schedulerSpec = torch.optim.lr_scheduler.StepLR(optimizerSpec, step_size=10**4, gamma=0.1)
 
         if self.args.resume:
-            self.diffuseNet.load_state_dict(torch.load(os.path.join(self.model_dir, 'diffuseNet.pt')))
+            for i in range(len(self.diffuseNetList)):
+                self.diffuseNetList[i].load_state_dict(torch.load(os.path.join(self.model_dir, 'diffuseNet{}.pt'.format(i))))
             self.specularNet.load_state_dict(torch.load(os.path.join(self.model_dir, 'specularNet.pt')))
-        # accuLossDiff = 0
-        # accuLossSpec = 0
-        # accuLossFinal = 0
+
         writer_LossDiff = 0
         writer_LossSpec = 0
         writer_LossFinal = 0
@@ -85,8 +89,8 @@ class Trainer():
                 
                 # get the inputs
                 X_diff = sample_batched['X_diff'].permute(permutation).to(self.device)
+                
                 Y_diff = sample_batched['Reference'][:,:,:,:3].permute(permutation).to(self.device)
-                pdb.set_trace()
 
                 # zero the parameter gradients
                 optimizerDiff.zero_grad()
