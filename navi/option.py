@@ -38,6 +38,8 @@ parser.add_argument('--dir_test_proc', type=str, default='test_proc/',
 # Model specifications
 parser.add_argument('--model', default='KPCN',
                     help='model name, KPCN(default) or DPCN')
+parser.add_argument('--prediction', default='KP',
+                    help='KP or DP')
 
 parser.add_argument('--act', type=str, default='relu',
                     help='activation function')
@@ -53,11 +55,11 @@ parser.add_argument('--nc_input', type=int, default=28,
                     help='number of channels of input')
 parser.add_argument('--nc_output', type=int, default=3,
                     help='number of channels of output')
-parser.add_argument('--kernel_size', type=int, default=5,
+parser.add_argument('--kernel_size', type=int, default=3,
                     help='number of kernel')
-parser.add_argument('--recon_kernel_size', type=int, default=21,
+parser.add_argument('--recon_kernel_size', type=int, default=15,
                     help='number of kernel')
-parser.add_argument('--res_scale', type=float, default=1,
+parser.add_argument('--res_scale', type=float, default=0.1,
                     help='residual scaling')
 # parser.add_argument('--shift_mean', default=True,
 #                     help='subtract pixel mean from the input')
@@ -146,7 +148,7 @@ parser.add_argument('--test_freq', type=int, default=1000,
                     help='save all intermediate models')
 parser.add_argument('--print_freq', type=int, default=200,
                     help='how many batches to wait before logging training status')
-parser.add_argument('--visualize_freq', type=int, default=400,
+parser.add_argument('--visualize_freq', type=int, default=200,
                     help='how many batches to wait before logging training status')
 # parser.add_argument('--save_results', action='store_true',
 #                     help='save output results')

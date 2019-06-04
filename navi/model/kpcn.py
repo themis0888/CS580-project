@@ -4,11 +4,11 @@ import torch.nn.functional as F
 import torchvision
 import torchvision.transforms as transforms
 
-import ipdb
+import pdb
 
-class Net(nn.Module):
+class KPCN(nn.Module):
     def __init__(self, args):
-        super(Net, self).__init__()
+        super(KPCN, self).__init__()
 
         self.args = args
         self.sig = nn.Sigmoid()
@@ -17,41 +17,28 @@ class Net(nn.Module):
         self.n_layers = self.args.n_resblocks
 
         # define head module
-        head = [
+        layers = [
 			nn.Conv2d(args.nc_input, args.nc_feats, args.kernel_size),
 			nn.ReLU()
         ]
         
-        body = []
         for l in range(self.n_layers-2):
-            body += [
-                    nn.Conv2d(args.nc_feats, args.nc_feats, args.kernel_size, padding=1),
+            layers += [
+                    nn.Conv2d(args.nc_feats, args.nc_feats, args.kernel_size),
                     nn.ReLU()
             ]
             
         self.nc_output = 3 if args.prediction == 'DP' else args.recon_kernel_size**2
-        tail = [nn.Conv2d(args.nc_feats, self.nc_output, args.kernel_size)]#, padding=18)]
+        layers += [nn.Conv2d(args.nc_feats, self.nc_output, args.kernel_size)]#, padding=18)]
         
-        for layer in head:
+        for layer in layers:
             if isinstance(layer, nn.Conv2d):
                 nn.init.xavier_uniform_(layer.weight)
-        for layer in body:
-            if isinstance(layer, nn.Conv2d):
-                nn.init.xavier_uniform_(layer.weight)
-        for layer in tail:
-            if isinstance(layer, nn.Conv2d):
-                nn.init.xavier_uniform_(layer.weight)
-
-        self.head = nn.Sequential(*head)
-        self.body = nn.Sequential(*body)
-        self.tail = nn.Sequential(*tail)
+        
+        self.net = nn.Sequential(*layers)
 
     def forward(self, x):
-        # ipdb.set_trace()
-        x = self.head(x)
-        res = self.body(x)
-        res += x
-        x = self.tail(res)
+        x = self.net(x)
 
         return x 
 

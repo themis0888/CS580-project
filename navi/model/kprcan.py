@@ -92,7 +92,7 @@ class KPRCAN(nn.Module):
 
         modules_body.append(conv(n_feats, n_feats, kernel_size))
 
-        self.nc_output = 3 if args.model == 'DPCN' else args.recon_kernel_size**2
+        self.nc_output = 3 if args.prediction == 'DP' else args.recon_kernel_size**2
         
         # define tail module
         modules_tail = [conv(args.nc_feats, self.nc_output, args.kernel_size)]

@@ -20,11 +20,11 @@ class KPRCN(nn.Module):
         kernel_size = args.kernel_size
         reduction = args.reduction
         self.nalu = args.nalu 
-        act = nn.LeakyReLU(True)
+        act = nn.ReLU(True)
         
         # define head module
         modules_head = [conv(args.nc_input, args.nc_feats, args.kernel_size),
-			nn.LeakyReLU()
+			nn.ReLU()
             ]
 
         # define body module
@@ -35,7 +35,7 @@ class KPRCN(nn.Module):
         ]
         modules_body.append(conv(n_feats, n_feats, kernel_size))
 
-        self.nc_output = 3 if args.model == 'DPCN' else args.recon_kernel_size**2
+        self.nc_output = 3 if args.prediction == 'DP' else args.recon_kernel_size**2
         
         # define tail module
         modules_tail = [conv(args.nc_feats, self.nc_output, args.kernel_size)]

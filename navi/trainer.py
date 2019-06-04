@@ -38,6 +38,7 @@ class Trainer():
         self.print_freq = self.args.print_freq
         self.visualize_freq = self.args.visualize_freq
         self.writer = writer
+        self.prediction = self.args.prediction
 
         if not os.path.exists(self.model_dir): os.makedirs(self.model_dir)
         
@@ -64,7 +65,7 @@ class Trainer():
         criterion = nn.L1Loss()
 
         optimizerDiff = optim.Adam(self.diffuseNet.parameters(), lr=learning_rate)
-        optimizerSpec = optim.Adam(self.specularNet.parameters(), lr=learning_rate/10)
+        optimizerSpec = optim.Adam(self.specularNet.parameters(), lr=learning_rate)
         # pdb.set_trace()
         if self.args.resume:
             self.diffuseNet.load_state_dict(torch.load(os.path.join(self.model_dir, 'diff_best.pt')))
@@ -94,12 +95,12 @@ class Trainer():
             print('Epoch {:04d}'.format(epoch))
             for i_batch, sample_batched in enumerate(dataloader):
 
-                if (self.global_step > self.args.print_freq * 10) and (phase == 1): 
+                if (self.global_step > self.args.print_freq * 20) and (phase == 1): 
                     phase = 2
                     self.print_freq = self.args.print_freq
                     self.test_freq = self.args.test_freq
                     optimizerDiff = optim.Adam(self.diffuseNet.parameters(), lr=learning_rate/5)
-                    optimizerSpec = optim.Adam(self.specularNet.parameters(), lr=learning_rate/500)
+                    optimizerSpec = optim.Adam(self.specularNet.parameters(), lr=learning_rate/5)
                     print('Learning Rate Changed to {:.4E}'.format(learning_rate/5))
                 
                 self.global_step += 1
@@ -117,7 +118,7 @@ class Trainer():
 
                 # print(outputDiff.shape)
 
-                if self.model != 'DPCN':
+                if self.prediction == 'KP':
                     X_input = self.crop_like(X_diff, outputDiff)
                     outputDiff = self.apply_kernel(outputDiff, X_input)
 
@@ -137,7 +138,7 @@ class Trainer():
                 # forward + backward + optimize
                 outputSpec = self.specularNet(X_spec)
 
-                if self.model != 'DPCN':
+                if self.prediction == 'KP':
                     X_input = self.crop_like(X_spec, outputSpec)
                     outputSpec = self.apply_kernel(outputSpec, X_input)
                 
@@ -355,7 +356,7 @@ class Trainer():
             
             in_data = np.array((torch.clamp(X_fin_input, 0, 1)**0.454545).permute([0,2,3,1])[0].cpu().numpy()*255, dtype = np.uint8)
             out_data = cv2.fastNlMeansDenoisingColored(in_data, None, 10, 10, 7, 21)
-            cv2.imwrite('output/BM3D_{}.png'.format(img_num), out_data)
+            cv2.imwrite('output/BM3D_{}.png'.format(img_num), cv2.cvtColor(out_data, cv2.COLOR_BGR2RGB))
             gt_data = np.array((torch.clamp(Y_final, 0, 1)**0.454545).permute([0,2,3,1])[0].cpu().numpy()*255, dtype = np.uint8)
             in_data = torch.tensor(in_data, dtype=torch.float32).permute([2,0,1]).unsqueeze(0)
             out_data = torch.tensor(out_data, dtype=torch.float32).permute([2,0,1]).unsqueeze(0)
@@ -395,7 +396,7 @@ class Trainer():
 
             # print(outputDiff.shape)
 
-            if mode == 'KPCN':
+            if self.prediction == 'KP':
                 X_input = self.crop_like(X_diff, outputDiff)
                 outputDiff = self.apply_kernel(outputDiff, X_input)
 
@@ -410,7 +411,7 @@ class Trainer():
             # forward + backward + optimize
             outputSpec = specularNet(X_spec)
 
-            if mode == 'KPCN':
+            if self.prediction == 'KP':
                 X_input = self.crop_like(X_spec, outputSpec)
                 outputSpec = self.apply_kernel(outputSpec, X_input)
 
