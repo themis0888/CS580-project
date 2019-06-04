@@ -28,7 +28,7 @@ class Net(nn.Module):
                     nn.ReLU()
             ]
             
-        nc_output = 3 if self.model == 'DPCN' else args.recon_kernel_size**2
+        nc_output = args.recon_kernel_size**2
         layers += [nn.Conv2d(args.nc_feats, nc_output, args.kernel_size)]#, padding=18)]
         
         for layer in layers:

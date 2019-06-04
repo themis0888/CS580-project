@@ -10,7 +10,7 @@ def main():
     writer = SummaryWriter()
     train_set = KPCNDataset(args)
     test_set = KPCNDataset(args, train=False)
-    train_loader = DataLoader(train_set, batch_size=args.batch_size, shuffle=True)
+    train_loader = DataLoader(train_set, batch_size=1, shuffle=True)
     test_loader = DataLoader(test_set, batch_size=1, shuffle=True)
     kpcn_t = Trainer(args, train_loader, test_loader, writer=writer)
     if not args.only_test:

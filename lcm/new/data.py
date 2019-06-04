@@ -282,7 +282,9 @@ def preprocess_input(filename, gt):
     
     assert not np.isnan(X_diff).any()
     assert not np.isnan(X_spec).any()
-    
+    assert not np.isinf(X_diff).any()
+    assert not np.isinf(X_spec).any()
+
     data['X_diff'] = X_diff
     data['X_spec'] = X_spec
     
