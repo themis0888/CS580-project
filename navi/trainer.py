@@ -120,7 +120,7 @@ class Trainer():
 
                 if self.prediction == 'KP':
                     X_input = self.crop_like(X_diff, outputDiff)
-                    outputDiff = self.apply_kernel(outputDiff, X_input)
+                    outputDiff = self.apply_kernel2(outputDiff, X_input)
 
                 Y_diff = self.crop_like(Y_diff, outputDiff)
 
@@ -140,7 +140,7 @@ class Trainer():
 
                 if self.prediction == 'KP':
                     X_input = self.crop_like(X_spec, outputSpec)
-                    outputSpec = self.apply_kernel(outputSpec, X_input)
+                    outputSpec = self.apply_kernel2(outputSpec, X_input)
                 
                 Y_spec = self.crop_like(Y_spec, outputSpec)
 
@@ -305,6 +305,46 @@ class Trainer():
 
         
         res = torch.cat((reds, greens, blues), dim=1).view(-1, 3, h, w).to(self.device)
+
+        ipdb.set_trace()
+        
+        return res
+    
+    def apply_kernel2(self, weights, data):
+        # apply softmax to kernel weights
+        weights = weights.permute((0, 2, 3, 1)).to(self.device)
+        _, nc, h, w = data.size()
+        weights = F.softmax(weights, dim=3).view(-1, w * h, self.recon_kernel_size, self.recon_kernel_size)
+
+        # now we have to apply kernels to every pixel
+        # first pad the input
+        r = self.recon_kernel_size // 2
+        data = F.pad(data[:,:3,:,:], (r,) * 4, "reflect")
+        nc = 3 
+        #print(data[0,:,:,:])
+        
+        # make slices
+        Data = [[] for i in range(nc)]
+        
+        kernels = []
+        for i in range(h):
+            for j in range(w):
+                pos = i*h+j
+                ws = weights[:,pos:pos+1,:,:]
+                kernels += [ws for i in range(nc)]
+                sy, ey = i+r-r, i+r+r+1
+                sx, ex = j+r-r, j+r+r+1
+                for c in range(nc):
+                    Data[c].append(data[:,c:c+1,sy:ey,sx:ex])
+        
+        ipdb.set_trace()
+        data_slices = []
+        for c in range(nc):
+            data_slices.append((torch.cat(Data[c], dim=1).to(self.device)*weights).sum(2).sum(2))
+
+        res = torch.cat(data_slices, dim=1).view(-1, 3, h, w).to(self.device)
+
+        
         
         return res
 
